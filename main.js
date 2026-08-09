@@ -115,8 +115,7 @@ function main() {
       {
         label: 'Quit Handrail',
         click: () => {
-          if (turns) turns.cancel();
-          windows.showArrow(null);
+          if (turns) turns.reset();
           app.quit();
         },
       },
@@ -149,8 +148,7 @@ function main() {
     // screen share, hunting for the right window is not an option.
     const hide = process.platform === 'darwin' ? 'Command+Shift+Escape' : 'Control+Shift+Escape';
     globalShortcut.register(hide, () => {
-      turns.cancel();
-      windows.showArrow(null);
+      turns.reset();
       windows.hideOverlay();
     });
   }
@@ -167,7 +165,7 @@ function main() {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    if (turns) turns.cancel();
+    if (turns) turns.reset();
   });
 
   // The renderer has no business navigating anywhere. Blocking it here means a

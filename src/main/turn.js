@@ -55,7 +55,10 @@ class TurnController {
    * entirely rather than making it small.
    */
   async ask({ text, capture, turnId }) {
-    this.cancel();                       // one turn at a time, always
+    // Abort any in-flight request, but LEAVE THE TASK ALONE. This used to call
+    // cancel(), which also stopped the watching loop and cleared the arrow — so
+    // asking "now what?" in the middle of a task quietly abandoned it.
+    this._abortRequest();
     const id = turnId || `turn_${++this.turnId}`;
     const turn = { id, cancelled: false };
     this.active = turn;
@@ -72,9 +75,34 @@ class TurnController {
     return { turnId: id };
   }
 
-  cancel() {
+  /** Abort the in-flight model request. The task, if any, survives. */
+  _abortRequest() {
     if (this.active) this.active.cancelled = true;
     this.active = null;
+  }
+
+  /**
+   * Stop the request but keep the task running.
+   *
+   * This is what Escape does. Someone cancelling a slow reply mid-task has not
+   * asked to throw the task away, and taking their checklist and their arrow
+   * with it would be a surprising amount of destruction for one keypress.
+   */
+  cancel() {
+    this._abortRequest();
+  }
+
+  /**
+   * Put everything away: request, task, watching, arrow.
+   *
+   * For collapsing the overlay, starting a new thread, and quitting — the
+   * cases where the user has genuinely finished with what was on screen. An
+   * arrow left pointing at a control after Handrail has been put away is the
+   * worst failure this product has.
+   */
+  reset() {
+    this._abortRequest();
+    this.task = null;
     this.stopWatching();
     this.point(null);
   }
@@ -110,6 +138,8 @@ class TurnController {
       prompt: text,
       screenshot: shot,
       history: thread ? thread.turns : [],
+      // So a follow-up continues the checklist instead of duplicating it.
+      activeTask: this.task,
     });
     if (turn.cancelled) return;
 
@@ -118,7 +148,7 @@ class TurnController {
     } else {
       this.emit({ type: 'answer', turnId: turn.id, markdown: result.markdown });
       this.emit({ type: 'done', turnId: turn.id });
-      this._record(text, result.markdown);
+      this._record(text, { kind: 'answer', markdown: result.markdown });
       this.active = null;
     }
   }
@@ -144,7 +174,11 @@ class TurnController {
       steps: this.task.steps.map((s) => ({ text: s.text, hint: s.hint })),
     });
     this.emit({ type: 'done', turnId: turn.id });
-    this._record(prompt, plan.title);
+    this._record(prompt, {
+      kind: 'task',
+      title: plan.title,
+      steps: plan.steps.map((s) => ({ text: s.text, hint: s.hint })),
+    });
     this.active = null;
 
     const settings = this.store.getSettings();
@@ -385,10 +419,18 @@ class TurnController {
     return threads.length ? this.store.getThread(threads[0].id) : null;
   }
 
-  _record(prompt, summary) {
+  /**
+   * Store what was actually said.
+   *
+   * This used to save only a one-line summary — for a checklist, just its
+   * title. Re-opening a thread then showed a column of repeated headings with
+   * no conversation in it, and the model was fed the same thing as history, so
+   * it had nothing to be conversational about.
+   */
+  _record(prompt, reply) {
     let thread = this._currentThread();
     if (!thread) thread = this.store.createThread();
-    this.store.appendTurn(thread.id, { prompt, summary, at: Date.now() });
+    this.store.appendTurn(thread.id, { prompt, ...reply, at: Date.now() });
   }
 }
 

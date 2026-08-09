@@ -257,6 +257,53 @@ async function run() {
   check('the first question is still readable', counts.firstPromptStillThere);
   check('checklist rendered inside the transcript', counts.steps === 4, `${counts.steps} steps`);
 
+  // --- follow-ups must not restart the task -------------------------------
+  //
+  // The reported bug: every prompt jumped straight to a checklist, so "now
+  // what?" produced a second copy of the one already running and the thread
+  // became a column of repeated headings. Two halves to it — the model was
+  // never told a checklist existed, and asking anything killed the live task.
+  console.log('\nconversation');
+
+  const asked = [];
+  llm.respond = async ({ prompt, activeTask }) => {
+    asked.push({ prompt, sawActiveTask: !!activeTask });
+    return { kind: 'answer', markdown: 'The Razor tool is the small blade icon.' };
+  };
+
+  const taskBefore = turns.task;
+  check('a checklist is running', !!taskBefore, String(taskBefore && taskBefore.taskId));
+
+  await submit('now what?');
+  check('follow-up told the model a checklist is running',
+    asked.length > 0 && asked[asked.length - 1].sawActiveTask);
+  check('follow-up did not abandon the checklist', turns.task === taskBefore);
+
+  const replayCounts = await feed(`({
+    steps: document.querySelectorAll('.step').length,
+    lastReply: document.querySelectorAll('.msg--assistant .prose p')[
+      document.querySelectorAll('.msg--assistant .prose p').length - 1]?.textContent || '',
+  })`);
+  check('the follow-up got a conversational reply, not another checklist',
+    replayCounts.lastReply.includes('blade icon'), replayCounts.lastReply);
+
+  // Threads must reopen as a conversation, not as a list of titles.
+  const openThread = store.listThreads()[0];
+  await feed(`window.handrail.threads.open(${JSON.stringify(openThread.id)})`);
+  const stored = store.getThread(openThread.id);
+  const kinds = stored.turns.map((t) => t.kind);
+  check('replies are stored in full, not as titles',
+    stored.turns.some((t) => t.kind === 'answer' && t.markdown),
+    JSON.stringify(kinds));
+  check('checklists are stored with their steps',
+    stored.turns.some((t) => t.kind === 'task' && Array.isArray(t.steps) && t.steps.length > 0));
+
+  // Escape cancels the request; it must not throw the task away with it.
+  turns.cancel();
+  check('cancelling a request keeps the checklist', turns.task === taskBefore);
+  turns.reset();
+  check('reset does put the checklist away', turns.task === null);
+
   // --- the overlay must not flicker --------------------------------------
   //
   // Capture used to hide the overlay and show it again, so the UI visibly

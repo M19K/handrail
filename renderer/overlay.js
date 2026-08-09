@@ -202,6 +202,7 @@ function clearTranscript() {
   state.pointingAt = null;
   el.body.replaceChildren();
   el.panelProgress.hidden = true;
+  el.panelTitle.textContent = 'Handrail';
   scheduleResize();
 }
 
@@ -413,7 +414,6 @@ function renderTask(event) {
     })),
   };
 
-  el.panelTitle.textContent = event.title;
   renderSteps();
 }
 
@@ -507,6 +507,53 @@ function renderSteps() {
   task.list.replaceChildren(frag);
   followIfAtBottom(wasAtBottom);
   scheduleResize();
+}
+
+/**
+ * A checklist from an earlier turn, rendered read-only.
+ *
+ * Not interactive and not tracked: step status is live state belonging to the
+ * running task, and offering to tick a step in a conversation that has moved on
+ * would be lying about what the click does.
+ */
+function renderArchivedTask(msg, turn) {
+  msg.content.className = 'msg__content';
+  msg.content.replaceChildren();
+
+  const title = document.createElement('p');
+  title.className = 'task__title';
+  title.textContent = turn.title || '';
+
+  const list = document.createElement('div');
+  list.className = 'steps steps--archived';
+
+  (turn.steps || []).forEach((step, i) => {
+    const row = document.createElement('div');
+    row.className = 'step';
+    row.dataset.status = 'todo';
+
+    const mark = document.createElement('span');
+    mark.className = 'step__mark';
+    mark.textContent = String(i + 1);
+
+    const body = document.createElement('div');
+    const text = document.createElement('p');
+    text.className = 'step__text';
+    text.textContent = step.text;
+    body.append(text);
+
+    if (step.hint) {
+      const hint = document.createElement('span');
+      hint.className = 'step__hint';
+      hint.textContent = step.hint;
+      text.append(hint);
+    }
+
+    row.append(mark, body);
+    list.append(row);
+  });
+
+  msg.content.append(title, list);
 }
 
 function icon(d, width) {
@@ -662,18 +709,27 @@ async function openThread(id) {
   const thread = await bridge.threads.open(id);
   clearTranscript();
 
-  // Replay what was said. Only the prompt and a summary are stored, so an
-  // opened thread reads as history rather than as a live conversation — which
-  // is honest about what it is.
+  // Replay the actual conversation, both sides. Checklists come back as
+  // checklists rather than as their title — a thread that reads as a column of
+  // repeated headings is not a record of anything.
   for (const turn of (thread && thread.turns) || []) {
     addUserMessage(turn.prompt);
     const msg = addAssistantMessage();
-    msg.kind = 'text';
-    msg.text = turn.summary || '';
-    renderProse(msg.content, msg.text);
+
+    if (turn.kind === 'task' && Array.isArray(turn.steps)) {
+      msg.kind = 'task';
+      renderArchivedTask(msg, turn);
+    } else {
+      msg.kind = 'text';
+      // `summary` is the older record shape; threads written before replies
+      // were stored in full still have to open.
+      msg.text = turn.markdown || turn.summary || '';
+      renderProse(msg.content, msg.text);
+    }
   }
 
   el.panelTitle.textContent = (thread && thread.title) || 'Handrail';
+  el.panelProgress.hidden = true;
   if (state.messages.length) setView('answer');
   renderThreads();
 }

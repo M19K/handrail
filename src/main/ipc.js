@@ -37,10 +37,9 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
   handle('hr:threads:list', () => store.listThreads());
   handle('hr:threads:open', (id) => store.getThread(id));
   handle('hr:threads:create', () => {
-    // Starting a new thread abandons whatever was in flight — the user has
-    // explicitly moved on, and leaving a turn streaming into a thread they are
-    // no longer looking at is worse than cancelling it.
-    turns.cancel();
+    // A new thread is a fresh start: the checklist, the arrow and anything
+    // still in flight all belong to the thread being left behind.
+    turns.reset();
     return store.createThread();
   });
   handle('hr:threads:rename', (id, title) => { store.renameThread(id, title); });
@@ -64,8 +63,8 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     // a control after the user has put Handrail away is the worst failure this
     // product has.
     if (state === 'collapsed') {
-      turns.cancel();
-      windows.showArrow(null);
+      // reset, not cancel: putting Handrail away finishes with the task too.
+      turns.reset();
     }
   });
   handle('hr:window:resize', (size) => { windows.resizeOverlay(size || {}); });
@@ -75,8 +74,7 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
   handle('hr:window:quit', () => {
     // Tear down before quitting. An arrow window outliving the app for even a
     // frame leaves a mint stroke stranded on the user's screen.
-    turns.cancel();
-    windows.showArrow(null);
+    turns.reset();
     app.quit();
   });
 

@@ -662,3 +662,8 @@ button {
 /* The popup list is an OS surface, not ours — it needs an opaque ground or the
    options render over whatever happens to be behind the overlay. */
 .select option { background: var(--ink-900); color: var(--text-primary); }
+
+/* An archived checklist is a record, not a control. Nothing about it should
+   suggest it can still be ticked. */
+.steps--archived .step { cursor: default; opacity: 0.82; }
+.steps--archived .step__mark { border-style: dashed; }

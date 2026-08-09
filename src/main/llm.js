@@ -38,6 +38,30 @@ function imagePart(buffer) {
   return { inlineData: { mimeType: 'image/png', data: buffer.toString('base64') } };
 }
 
+/**
+ * Recent turns, as an actual transcript.
+ *
+ * This used to send `t.summary`, which for a checklist was only its title — so
+ * the model's view of the conversation was a list of repeated headings with no
+ * replies in it, and it had nothing to be conversational about. Six turns
+ * rather than four: follow-ups like "now what?" are short, so the useful
+ * context is further back than it looks.
+ */
+function formatHistory(history) {
+  if (!history || !history.length) return '';
+
+  return history.slice(-6).map((turn) => {
+    let reply;
+    if (turn.kind === 'task') {
+      const steps = (turn.steps || []).map((s, i) => `  ${i + 1}. ${s.text}`).join('\n');
+      reply = `[gave them a checklist: "${turn.title}"]\n${steps}`;
+    } else {
+      reply = String(turn.markdown || turn.summary || '').slice(0, 500);
+    }
+    return `User: ${turn.prompt}\nYou: ${reply}`;
+  }).join('\n\n');
+}
+
 class Llm {
   constructor(getKey, getModel) {
     this.getKey = getKey;
@@ -73,15 +97,29 @@ class Llm {
    * a product requirement (PRODUCT.md); making it a separate request would not
    * make it more reliable.
    */
-  async respond({ prompt, screenshot, history }) {
+  async respond({ prompt, screenshot, history, activeTask }) {
     const parts = [];
     if (screenshot) parts.push(imagePart(screenshot));
 
-    if (history && history.length) {
-      const recent = history.slice(-4)
-        .map((t) => `Q: ${t.prompt}\nA: ${(t.summary || '').slice(0, 300)}`)
-        .join('\n\n');
-      parts.push({ text: `Earlier in this conversation:\n${recent}\n\n---\n` });
+    const transcript = formatHistory(history);
+    if (transcript) {
+      parts.push({ text: `Earlier in this conversation:\n\n${transcript}\n\n---\n\n` });
+    }
+
+    // Telling the model a checklist is already running is what stops "now what?"
+    // producing a second copy of the same checklist. Without it the model has no
+    // way to know the plan it is about to write already exists.
+    if (activeTask) {
+      const steps = activeTask.steps
+        .map((s, i) => `  ${i + 1}. [${s.status === 'done' ? 'done' : s.status === 'active' ? 'CURRENT' : 'to do'}] ${s.text}`)
+        .join('\n');
+      parts.push({
+        text:
+          `A checklist is ALREADY RUNNING. Do not create another one unless the ` +
+          `user has clearly changed goal.\n\n"${activeTask.title}"\n${steps}\n\n` +
+          `They are on step ${activeTask.activeIndex + 1}. If this message is ` +
+          `about that, answer it — do not re-issue the checklist.\n\n---\n\n`,
+      });
     }
 
     parts.push({ text: prompt });
