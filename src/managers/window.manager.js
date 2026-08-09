@@ -623,15 +623,30 @@ class WindowManager {
     // Hide from taskbar to maintain stealth
     window.setSkipTaskbar(true);
     
-    // Make window undetectable by screen capture (if supported)
-    try {
-      window.setContentProtection(true);
-      if (process.platform === 'linux' && !this._warnedNoContentProtection) {
-        this._warnedNoContentProtection = true;
-        logger.warn('Screen-capture protection is unavailable on Linux (Electron limitation). The overlay WILL be visible in screen shares. This stealth feature only works on macOS and Windows.');
+    // Exclude the window from screen capture (WDA_EXCLUDEFROMCAPTURE on
+    // Windows, NSWindowSharingNone on macOS).
+    //
+    // Set STEALTH_MODE=false in .env to disable. That makes the overlay
+    // visible to screen capture, which is required to screenshot the UI for
+    // design iteration — you cannot capture a window that excludes itself
+    // from capture. Defaults to enabled so shipped builds are unaffected.
+    const stealthEnabled = String(process.env.STEALTH_MODE ?? 'true').toLowerCase() !== 'false';
+
+    if (!stealthEnabled) {
+      if (!this._warnedStealthDisabled) {
+        this._warnedStealthDisabled = true;
+        logger.warn('STEALTH_MODE=false — the overlay IS visible to screen capture and recording. Development only.');
       }
-    } catch (error) {
-      logger.debug('Content protection not supported on this platform');
+    } else {
+      try {
+        window.setContentProtection(true);
+        if (process.platform === 'linux' && !this._warnedNoContentProtection) {
+          this._warnedNoContentProtection = true;
+          logger.warn('Screen-capture protection is unavailable on Linux (Electron limitation). The overlay WILL be visible in screen shares. This stealth feature only works on macOS and Windows.');
+        }
+      } catch (error) {
+        logger.debug('Content protection not supported on this platform');
+      }
     }
     
     // More aggressive event listeners to maintain always-on-top behavior
