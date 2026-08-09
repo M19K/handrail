@@ -91,7 +91,7 @@ and not touching anything costs nothing at all.
 
 Coordinates come back normalised 0–1000 rather than in pixels, which makes DPI
 scaling and multi-monitor setups a non-issue by construction — see
-[`spike/arrow/geometry.js`](spike/arrow/geometry.js).
+[`src/main/geometry.js`](src/main/geometry.js).
 
 ## Development
 

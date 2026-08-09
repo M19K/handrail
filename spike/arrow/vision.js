@@ -12,7 +12,7 @@
  */
 
 const { OpenRouterClient } = require('../../src/services/openrouter.adapter');
-const { NORM_MAX } = require('./geometry');
+const { NORM_MAX } = require('../../src/main/geometry');
 
 /**
  * The prompt is deliberately blunt about the coordinate convention. Vision

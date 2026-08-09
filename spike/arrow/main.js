@@ -33,7 +33,7 @@ const {
   assertCaptureMatchesDisplay,
   boxToScreenRect,
   nativeCaptureSize,
-} = require('./geometry');
+} = require('../../src/main/geometry');
 const { locateControl } = require('./vision');
 
 // ---------------------------------------------------------------------------

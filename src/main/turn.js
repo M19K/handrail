@@ -13,7 +13,7 @@
  */
 
 const { captureDisplay, displayForWindow, captureMatchesDisplay } = require('./capture');
-const { parseBox, isBoxSane, boxToScreenRect } = require('../../spike/arrow/geometry');
+const { parseBox, isBoxSane, boxToScreenRect } = require('./geometry');
 
 // --- watching parameters. See PRODUCT.md for the reasoning behind each. -----
 const QUIET_MS = 1200;        // screen must be still this long before checking

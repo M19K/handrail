@@ -137,7 +137,7 @@ class Llm {
   /**
    * Where is this control on screen?
    *
-   * Normalised 0–1000 coordinates, never pixels — see spike/arrow/geometry.js
+   * Normalised 0–1000 coordinates, never pixels — see src/main/geometry.js
    * for why that makes the whole DPI and multi-monitor problem disappear.
    */
   async locate({ screenshot, target }) {
