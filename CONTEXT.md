@@ -4,218 +4,75 @@
 > or agent picking up this project should be able to continue from here without
 > re-deriving anything. Update it when a decision is made, not at the end.
 
-Last updated: 2026-08-01
+Last updated: 2026-08-09
 
 ---
 
-## ⏭ SESSION HANDOFF — read this first (2026-08-08)
+## ⏭ SESSION HANDOFF — read this first (2026-08-09)
 
-### State: **v1 is built and it runs.**
+### Where it is
 
-The app boots, onboarding works, the overlay works, and the arrow draws on a
-real screen. What remains is a live model test and packaging.
+**Handrail runs.** It is packaged, installed and on the desktop:
 
-### Git state
-Fresh repo, `main`. **Commit `7909792` is pristine upstream** — everything after
-is original work. `git diff 7909792..HEAD` is the portfolio artifact.
-Roughly **15,100 lines deleted, 1,900 written** in the rebuild.
+- source: `C:\Users\m19k1\Downloads\Claude Projects\OpenCluely`
+- installed: `%LOCALAPPDATA%\Programs\Handrail\Handrail.exe`
+- shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
+- rebuild + reinstall: `node scripts/package-win.js --install`
 
-### Verified by looking at pictures, not by assertion
-| Command | What it proves |
-|---|---|
-| `npm test` | 24 unit tests — coordinate maths, provider detection. No Electron needed. |
-| `npm run dev:renderer` | All 9 overlay states, against a mock bridge. PNGs in `%TEMP%\handrail-renderer`. |
-| `npx electron scripts/smoke.js` | Real windows, real preload, real IPC. PNGs in `%TEMP%\handrail-smoke`. All checks pass. |
-| `npm start` | Boots clean. |
+17 commits. `7909792` is pristine upstream, so `git diff 7909792..HEAD` is the
+portfolio artifact: **93 files, +13,146 / −21,781** — it removes more than it adds,
+which is the point.
 
-### BLOCKED — one thing, and it is the same thing as always
-**No live model call has ever been made.** Everything is verified structurally
-and visually; the provider round trip is not. `.env` still has a 73-char value
-on `GEMINI_API_KEY=` with `OPENROUTER_API_KEY=` empty — the key is on the wrong
-line. Move it, then `npm start` and ask something real.
+### Built since the last handoff
 
-⚠ Check first whether that value is the key previously flagged as compromised.
+- **Renderer rebuilt.** Four windows became one overlay with three states plus
+  two side panels. The old `index/chat/llm-response/settings/onboarding` HTML is
+  gone.
+- **Main process rewritten.** `src/main/` — store, llm, capture, turn, windows,
+  ipc, geometry, prompts. `main.js` went from ~2,000 lines to ~200.
+- **IPC contract redesigned.** ~90 channels across two bridges became one
+  namespaced bridge and a single event stream. See `docs/IPC.md`.
+- **Identity shipped.** Mark C4 with the grip, `design/brand/`, `design/tokens.css`.
+- **Arrow spike passed and became the product.** `src/main/geometry.js` is
+  production code now; `spike/arrow/` imports from it.
+- **Windows packaging without electron-builder** — it cannot run on this machine
+  (symlink extraction needs Developer Mode). `scripts/package-win.js` does it
+  directly, including a hand-written `.ico` encoder.
+- **Speech deleted.** No Whisper, no Azure, no `node-record-lpcm16`.
 
-### Next actions
-1. **Move the key, run it, ask a real question.** Exercises the whole chain at
-   once: capture → plan → arrow → watch → advance. Expect prompt tuning.
-2. **Judge arrow accuracy on a real app.** The original go/no-go gate, still
-   never answered with a funded key. Fallback if accuracy is poor: make
-   pointing a setting that is off by default and let the checklist carry v1.
-3. **App icons** — master is `design/brand/app-icon.svg`; generate with
-   `electron-icon-builder` (command in `design/brand/README.md`).
-4. **Package** — `npm run build:win`. macOS stays unsigned for v1.
-5. **Polish pass** — `impeccable`, `emil-design-eng`, animation review.
+### Verification
 
-### Known gaps, deliberate and worth knowing
-- Thread switching lists and opens threads but does not re-render past turns
-  into the panel. The store keeps them; the UI does not show them yet.
-- The `Change` button on the API-key settings row is not wired to re-open
-  onboarding.
-- No tray icon. Once collapsed, the app is reachable only by hotkey
-  (`Ctrl/Cmd+Shift+H`, panic-hide on `Ctrl/Cmd+Shift+Esc`).
-- `src/core/logger.js` survives but nothing uses it — console only for now.
+- `npm test` — 30 unit tests (geometry, key-format detection). Node's built-in
+  runner, no framework.
+- `npx electron scripts/smoke.js` — 49 checks against the real main process and
+  real preload, writing screenshots to `%TEMP%\handrail-smoke`.
+- The smoke test runs against a throwaway userData directory. It used to write
+  to the real one, which mutated the installed app and made results depend on
+  the previous run.
 
-> ⚠ **Terminology.** The approved gstack artifact below is a **BUILD PLAN** —
-> sequencing, architecture, risk order. It contains no pixels, no screens, no
-> components. It was previously called "the design doc", which read as "the UI
-> is designed". It is not. Visual design starts at `design/directions-v1.html`.
+### Known gaps, in priority order
 
-### Done
-- Planning phase complete; **build plan APPROVED** at
-  `~/.gstack/projects/TechyCSR-OpenCluely/m19k1-main-design-20260808-205158.md`
-- **Visual direction chosen: A "Calm Instrument"** — mint `#2FD9A8`, dark
-  translucent glass, floating. Board at `design/directions-v1.html`
-- **Design system written** — `design/tokens.css`, three layers, no raw hex
-  permitted in components
-- **All v1 screens designed** — `design/screens-v1.html`: onboarding key entry,
-  three overlay states, both answer types, arrow anatomy, both side panels
-- **Logo chosen and built** — Mark C4 with the grip. Assets and usage rules in
-  `design/brand/` (`mark.svg`, `mark-16.svg`, `mark-mono.svg`, `app-icon.svg`,
-  `wordmark.svg`, `README.md`)
-- **Step completion settled** — hybrid, weighted to watching. Full mechanism in
-  `PRODUCT.md` § "Step completion"
+1. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
+   (e.g. Obsidian's vault location) survive every prompt change so far. The next
+   real lever is a verification pass — have the model check its own plan against
+   the screenshot before showing it — at the cost of one extra call per task.
+2. **gstack protocol was not completed** — see below.
+3. **macOS never built or run.** All parity work is theoretical.
+4. **No `/qa` run** (Playwright `_electron`), no `/review`, no `/ship`.
+5. **Onboarding is untested by a real user other than the author.**
 
-### Design assets — where things live
-```
-design/tokens.css              the design system, three layers, no raw hex in components
-design/brand/README.md         mark geometry, clear space, the grip variable, misuse
-design/brand/*.svg             mark, 16px mark, mono, app icon, wordmark
-design/screens-v1.html         every v1 screen at real size — build against this
-design/directions-v1.html      the three-direction pitch (A chosen)
-design/logo-v1.html            the four-mark pitch
-design/logo-c-variations.html  the C revision that produced C4
-```
-- gstack + design skills installed (72 skills); superpowers plugin disabled
-- `STEALTH_MODE` env flag added — set `false` to make the overlay screenshottable
-- Prompt layer replaced: `prompts/guide.md` is now the only skill; dsa/programming
-  deleted, multi-skill routing collapsed
-- **Arrow spike harness built and its non-model half PROVEN** — see below
+### Traps
 
-### Arrow spike — status (2026-08-08)
-
-Everything except the model call is built and verified. `spike/arrow/` is a
-standalone Electron app; it imports nothing from `main.js` or the four renderer
-windows, so if the gate fails it is one `rm -rf` and nothing else unpicks.
-
-```
-spike/arrow/geometry.js       pure coordinate math — no Electron, no network
-spike/arrow/geometry.test.js  17 tests, all passing, no API key needed
-spike/arrow/vision.js         prompt + OpenRouter call + defensive JSON parse
-spike/arrow/main.js           capture -> locate -> draw -> self-capture
-spike/arrow/overlay.html      transparent click-through arrow renderer
-```
-
-```
-npm test                                    # 17/17, no key required
-npx electron spike/arrow --dry-run          # full draw path, no API call
-npx electron spike/arrow -- "the Save button"   # needs the key
-```
-
-**PROVEN with no API key** (`--dry-run` writes evidence PNGs to
-`%TEMP%\handrail-arrow-spike\`):
-- Coordinate chain correct on a **1x** display and a **2x** display
-- Correct on a display with a **negative origin** (this machine's second
-  monitor sits at `(1920, −211)`)
-- Multi-monitor source selection via `display_id`, verified on both screens
-- Overlay covers the **full display including the taskbar strip**
-- Transparent, click-through, always-on-top, draws legibly over other apps
-- Self-capture evidence loop works
-
-**STILL UNKNOWN — this is the actual gate:** whether the vision model returns a
-box accurate enough to land an arrow on a real control. Needs the key.
-
-### BLOCKED (narrowed)
-Only the **model-accuracy half** of the spike is blocked. `.env` has a 73-char
-value on `GEMINI_API_KEY=` and `OPENROUTER_API_KEY=` empty — the key is on the
-wrong line. 73 chars = `sk-or-v1-` + 64 hex, i.e. the OpenRouter key.
-Move it to `OPENROUTER_API_KEY=`, leave `GEMINI_API_KEY=` empty.
-⚠ Check first whether that value is the key CONTEXT flagged as compromised
-(line ~190); if so, rotate before use.
-
-### Next actions, in order
-**Re-sequenced 2026-08-08: design moved ahead of the spike.** The spike's
-remaining half is blocked on the user's key; design is blocked on nothing, and
-the project had produced nothing visible. Scheduling call, not a merits call.
-
-1. ~~Pick a direction~~ **DONE — A.** ~~Design system~~ **DONE.** ~~Screens~~ **DONE.**
-2. **Settle step completion** — the one open product question the mockups exposed.
-   Does the user tick a step off, or does Handrail watch the screen and decide?
-   Watching costs a screenshot and a model call per step; ticking is free but
-   makes the user do bookkeeping. Argue this before building the renderer,
-   because it changes the IPC contract and the step data model.
-3. **Renderer rebuild — IN PROGRESS.**
-   - ✅ IPC contract designed and written (`docs/IPC.md`)
-   - ✅ `preload.js` rewritten — one bridge, one event stream
-   - ✅ Overlay renderer built (`renderer/overlay.{html,css,js}`), all nine
-     states verified by screenshot via `npm run dev:renderer`
-   - ⬜ **NEXT: rewrite `src/managers/window.manager.js`** — one overlay window
-     plus a one-time onboarding window, replacing four. Must handle
-     `hr:window:resize` (renderer measures, main resizes) and keep
-     `setContentProtection` behind `STEALTH_MODE`.
-   - ⬜ Rewire `main.js` IPC handlers to the `hr:*` channels. Every old
-     `electronAPI` channel is now dead — nothing calls them.
-   - ⬜ Build the onboarding window against `design/screens-v1.html` § 01
-   - ⬜ **Then delete:** `index.html`, `chat.html`, `llm-response.html`,
-     `settings.html`, `onboarding.html`, `onboarding.js`, `src/ui/*`,
-     `speech-recognition.js`, `src/services/speech.service.js`,
-     `src/services/whisper-worker.service.js`, `src/core/whisper-installer.js`
-     (~6.5k lines of renderer + ~2.9k of speech). Delete last, not first —
-     they are the reference for anything main still needs.
-4. **Arrow spike — model half only** (parked until the key lands). Then
-   `npx electron spike/arrow -- "<control>"` over Premiere / Excel / a browser.
-   Judge accuracy from `%TEMP%\handrail-arrow-spike\located.png`.
-   Fallback if accuracy is bad: checklist becomes the headline instead.
-4. **Finish the strip** — speech subsystem still threads through 16 files
-   (`main.js`, `preload.js`, `config.js`, `first-run.js`, `settings.html`,
-   `onboarding.*`, `src/ui/*`, `speech-recognition.js`, `whisper-*`). This is
-   surgery, not a delete — do it as a focused pass. Voice is cut from v1.
-   Also dead code left behind: `prompt-loader.js:91` `case 'dsa':` inside
-   `injectProgrammingLanguage()`, now unreachable.
-3. **Rebrand** — `package.json` still says `opencluely` / TechyCSR / `com.opencluely.app`;
-   macOS `extendInfo` usage strings still reference Whisper and OpenCluely and are
-   user-facing copy; `hardenedRuntime` must become `true` before any future notarization.
-4. **Identity** → `design` skill. Then `ui-ux-pro-max` → `design-system` → `/design-shotgun`
-   (include BOTH onboarding options — one-time window vs overlay side panel — the
-   open question is deliberately deferred to visual mockups).
-5. **Renderer rebuild** — delete all four renderer windows, build one overlay with
-   three states (collapsed pill → expanded bar (default) → expanded answer) plus
-   slide-out panels. Redesign the IPC contract alongside.
-6. **Polish** → `impeccable`, `emil-design-eng`, animation pass. **Ship** → `/qa`
-   (Playwright `_electron`), `/review`, `/ship`.
-
-### Watch out for — traps already paid for once
-- **Order matters around `window-all-closed`.** Leaving zero windows open for an
-  instant quits the app on Windows. Create the replacement, then close.
-- **Hide Handrail's own windows before capturing** or the model reads its own
-  previous answer back to the user. `src/main/turn.js:_captureWithoutSelf`.
-- **`did-finish-load` can fire before you attach the listener** on local files.
-  Check `isLoading()` first, or the wait deadlocks and looks like a hang.
-- **`box-sizing: border-box` is not free.** Its absence made every padded
-  element wider than its container by exactly its own padding.
-- **Never let a flex item keep `min-width: auto`** if it must shrink — that is
-  what pushed the bar 20px past the panel it shares an edge with.
-- **Windows clamps a non-resizable window to the work area**, costing the
-  taskbar strip. `setBounds()` after construction, then lock.
-- **Old note, still true:** 51 tests from an earlier session live in a scratchpad
-  and were never moved in. `npm test` now runs `spike/**` and `src/**`; widen it
-  if they are ever recovered.
-- **Two bugs found in `capture.service.js` during the spike**, both still present
-  in the app and both fixed only inside `spike/arrow/main.js` so far:
-  (a) it matches the capture source to a display by comparing thumbnail *sizes*,
-  which picks the wrong monitor whenever two displays share an aspect ratio —
-  match on `display_id` instead; (b) it requests `display.size` (DIP), so a 2x
-  panel is captured at half resolution — request `size * scaleFactor`.
-  Port both when the renderer is rebuilt.
-- **Windows clamps a non-resizable window to the work area.** An overlay created
-  at full display bounds silently loses the taskbar strip. Fix is `setBounds()`
-  after construction, then `setResizable(false)`.
-- Overlay label chips do not yet avoid each other when several targets are drawn
-  at once. Irrelevant for v1 (one arrow), noted so it is not rediscovered.
-- `.env` is gitignored (`.gitignore:2`) — the key has never been committed. Keep it that way.
-- Backup of pre-reinit state: `%LOCALAPPDATA%\Temp\claude\handrail-backup\`
-- gstack slug is `TechyCSR-OpenCluely`, from the old git remote. It will change
-  when the remote is repointed; early artifacts stay under the old slug.
+- **`.env` is dev-only.** The packaged app has none; the key lives encrypted in
+  userData. `OPENROUTER_API_KEY` in `.env` still wins when running from source.
+- **Never import from `spike/` in `src/`.** It is not packaged; doing so crashes
+  the packaged app on boot and looks like a blank error dialog.
+- **Task Manager caches process names** — after a rebuild it can show the old
+  `FileDescription` until Task Manager itself is restarted.
+- **The renderer sends its own `capture` flag** on every ask. Changing capture in
+  the store alone leaves main and renderer disagreeing.
+- **Windows hides new tray icons** in the overflow flyout. The app cannot promote
+  itself; the user drags it out.
 
 ---
 
@@ -270,30 +127,12 @@ Handrail is a fork of **[OpenCluely](https://github.com/TechyCSR/OpenCluely)**
 
 ## Current state
 
-### Where the code lives
-`C:\Users\m19k1\Downloads\Claude Projects\OpenCluely\` — shallow clone of upstream,
-already modified. Will be renamed / re-inited as Handrail.
+Superseded — see the SESSION HANDOFF at the top of this file. The section that
+was here described the pre-rewrite codebase (`llm.service.js`, `speech.service.js`,
+`first-run.js`, four renderer windows) and none of those files exist any more.
 
-### Modifications already made (by Claude, not upstream)
-| File | Change |
-|---|---|
-| `src/services/openrouter.adapter.js` | **New.** Drop-in `GoogleGenAI`-compatible shim that speaks OpenAI format to OpenRouter and returns Gemini-shaped responses. Also contains `transcribeAudio()` for STT. |
-| `src/services/llm.service.js` | Routes through OpenRouter when `OPENROUTER_API_KEY` is set; streaming, model mapping, alt-request path patched. Falls back to Gemini when unset. |
-| `src/services/speech.service.js` | New `openrouter` speech provider reusing the entire local-Whisper capture pipeline; only the transcription backend swapped. |
-| `src/core/first-run.js` | Accepts an OpenRouter key as valid setup (was Gemini-only). |
-| `package.json` | Added `start:win` / `dev:win` (stock `start` uses POSIX `env -u`). |
-| `.env` | Created. |
-| `DEPLOYMENT.md` | Change log + verification record. |
+Kept only as a note that it was deliberately removed rather than forgotten.
 
-**51 tests passing** (26 adapter translation, 12 LLM wiring, 13 speech).
-Test scripts live in the session scratchpad — **should be moved into the repo
-as a proper test suite.**
-
-### Not yet done
-- No live API call has been made — everything is verified structurally only
-- Stealth toggle (`STEALTH_MODE` env flag) not yet implemented
-- No rebrand, no UI work, no name change in code
-- Fresh repo not yet created
 
 ---
 
@@ -420,7 +259,7 @@ Program enrolment deferred until funds allow — see `PLATFORM.md`.
 - [ ] Aesthetic direction — must pick exactly one and hold it
 - [ ] Whether the OpenRouter adapter stays or the product ships its own provider layer
 - [ ] Where the 51 existing tests live in the new repo structure
-- [ ] New repo name / GitHub org
+- [ ] New repo name / GitHub org — still open, and blocks /ship
 - [ ] What to do with the now-dead speech subsystem — delete or leave dormant
 
 ---
@@ -440,3 +279,55 @@ before any design work. The user has UI/product direction to give at that point.
 - Never commit secrets; `.env` is gitignored
 - Never invent copy, brand names, testimonials, or stats
 - Verify visually — screenshot and look before claiming something renders
+
+---
+
+## gstack protocol — where we actually are (2026-08-09)
+
+Recorded honestly because the plan in this file says one thing and the commit
+log says another. The intended spine was:
+
+`/office-hours` → `/autoplan` → `/plan-eng-review` → `/review` → `/ship`
+
+and the design order was: identity → design system → `/design-shotgun` →
+`brandkit` → `/design-html` → polish → `/qa` `/review` `/ship`.
+
+| Stage | Status | Note |
+|---|---|---|
+| `/office-hours` | **done** | 2026-08-08, Builder mode. Produced the approved design doc. |
+| `/autoplan` | **skipped** | Never run. Work was sequenced by hand from the design doc. |
+| `/plan-eng-review` | **skipped** | Never run. |
+| `/plan-design-review` | **skipped** | Never run. |
+| Identity | **done, off-skill** | Direction A and mark C4 chosen from hand-built comparison boards, not via the `design` skill. |
+| Design system | **done, off-skill** | `design/tokens.css`, written directly. |
+| `ui-ux-pro-max` | **partial** | Its Python search tool cannot run — no Python on this machine. Its CSV data was read directly instead. |
+| `/design-shotgun` | **substituted** | Variants were built by hand (`design/directions-v1.html`, `logo-*.html`) rather than by the skill. |
+| `brandkit` | **skipped** | Direction was locked in `DECISIONS.md` instead. |
+| `/design-html` | **substituted** | Renderer written directly. |
+| `impeccable`, `emil-design-eng`, animation trio | **skipped** | No polish pass has been run. |
+| `/qa` | **not run** | Playwright `_electron` path untested. `scripts/smoke.js` covers some of the same ground but is bespoke. |
+| `/review` | **not run** | No pre-landing review of the diff. |
+| `/ship` | **not run** | No VERSION bump, no CHANGELOG, no PR. There is no git remote yet. |
+
+### The honest summary
+
+We ran phase 0 and then improvised. Everything from identity onward was done
+directly rather than through the skills, and the review and ship stages have not
+happened at all.
+
+That was not all bad — the work was driven by live user testing of a running
+build, which caught things no plan review would have (the arrow's compositor
+lag, the turn-id race, the undecryptable key). But it means:
+
+- no independent review has looked at the diff
+- there is no changelog, version history or release
+- the polish pass the design plan called for has not been done
+
+### What to do about it, in order
+
+1. **`/review`** — a pre-landing review of `git diff 7909792..HEAD`. Highest
+   value: 93 files changed and nobody but the author has read them.
+2. **`/qa`** — a real Playwright `_electron` pass, to cover what `smoke.js` does
+   not.
+3. **`impeccable` + `emil-design-eng`** — the polish pass, once behaviour settles.
+4. **`/ship`** — needs a git remote and a repo name first, both still open.
