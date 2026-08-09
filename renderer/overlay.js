@@ -344,42 +344,115 @@ bridge.onTurn((event) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal markdown: paragraphs, inline code, fenced code, bold.
+ * Markdown: paragraphs, bullet and numbered lists (one level of nesting),
+ * fenced code, inline code, bold.
  *
- * Deliberately not a markdown library. Answers are short instructions, the
- * overlay must not ship a parser it cannot audit, and the CSP here forbids
- * remote script anyway. Everything is built with createElement and textContent
- * so no model output can ever reach innerHTML.
+ * Deliberately not a markdown library — the overlay should not ship a parser it
+ * cannot audit, and the CSP here forbids remote script anyway. Everything is
+ * built with createElement and textContent, so no model output ever reaches
+ * innerHTML.
+ *
+ * Lists matter more than they look. Without them every list the model wrote
+ * collapsed into one grey paragraph with stray hyphens in it, which is most of
+ * why answers read as thin and generic — the structure was being thrown away
+ * on the way to the screen.
  */
+const BULLET = /^(\s*)[-*•]\s+(.*)$/;
+const ORDERED = /^(\s*)\d+[.)]\s+(.*)$/;
+
+function inline(text) {
+  const frag = document.createDocumentFragment();
+  // Split on inline code and bold, keeping the delimiters.
+  for (const part of String(text).split(/(`[^`]+`|\*\*[^*]+\*\*)/g)) {
+    if (!part) continue;
+    if (part.startsWith('`') && part.endsWith('`')) {
+      const code = document.createElement('code');
+      code.textContent = part.slice(1, -1);
+      frag.append(code);
+    } else if (part.startsWith('**') && part.endsWith('**')) {
+      const b = document.createElement('strong');
+      b.textContent = part.slice(2, -2);
+      frag.append(b);
+    } else {
+      frag.append(document.createTextNode(part));
+    }
+  }
+  return frag;
+}
+
 function renderProse(target, markdown) {
   target.replaceChildren();
   target.className = 'msg__content prose';
 
-  for (const block of String(markdown || '').split(/\n{2,}/)) {
-    const fence = block.match(/^```[a-z]*\n([\s\S]*?)\n?```$/i);
-    if (fence) {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (!line.trim()) { i += 1; continue; }
+
+    // --- fenced code ---
+    if (/^\s*```/.test(line)) {
+      const body = [];
+      i += 1;
+      while (i < lines.length && !/^\s*```/.test(lines[i])) { body.push(lines[i]); i += 1; }
+      i += 1;   // closing fence
       const pre = document.createElement('pre');
-      pre.textContent = fence[1];
+      pre.textContent = body.join('\n');
       target.append(pre);
       continue;
     }
 
-    const p = document.createElement('p');
-    // Split on inline code and bold, keeping the delimiters.
-    for (const part of block.split(/(`[^`]+`|\*\*[^*]+\*\*)/g)) {
-      if (!part) continue;
-      if (part.startsWith('`') && part.endsWith('`')) {
-        const code = document.createElement('code');
-        code.textContent = part.slice(1, -1);
-        p.append(code);
-      } else if (part.startsWith('**') && part.endsWith('**')) {
-        const b = document.createElement('strong');
-        b.textContent = part.slice(2, -2);
-        p.append(b);
-      } else {
-        p.append(document.createTextNode(part));
+    // --- list ---
+    const match = BULLET.exec(line) || ORDERED.exec(line);
+    if (match) {
+      const ordered = !BULLET.test(line);
+      const list = document.createElement(ordered ? 'ol' : 'ul');
+      // Indentation of the first item is the baseline; anything deeper nests.
+      const baseIndent = match[1].length;
+      let sublist = null;
+
+      while (i < lines.length) {
+        const item = BULLET.exec(lines[i]) || ORDERED.exec(lines[i]);
+        if (!item) {
+          // A blank line inside a list is a gap, not the end of it.
+          if (!lines[i].trim() && (BULLET.test(lines[i + 1] || '') || ORDERED.test(lines[i + 1] || ''))) {
+            i += 1;
+            continue;
+          }
+          break;
+        }
+
+        const li = document.createElement('li');
+        li.append(inline(item[2]));
+
+        if (item[1].length > baseIndent + 1) {
+          if (!sublist) {
+            sublist = document.createElement(BULLET.test(lines[i]) ? 'ul' : 'ol');
+            (list.lastElementChild || list).append(sublist);
+          }
+          sublist.append(li);
+        } else {
+          sublist = null;
+          list.append(li);
+        }
+        i += 1;
       }
+
+      target.append(list);
+      continue;
     }
+
+    // --- paragraph ---
+    const para = [];
+    while (i < lines.length && lines[i].trim()
+           && !BULLET.test(lines[i]) && !ORDERED.test(lines[i]) && !/^\s*```/.test(lines[i])) {
+      para.push(lines[i]);
+      i += 1;
+    }
+    const p = document.createElement('p');
+    p.append(inline(para.join(' ')));
     target.append(p);
   }
 }

@@ -125,7 +125,7 @@ class Llm {
     parts.push({ text: prompt });
 
     const res = await this._client().models.generateContent(
-      this._req(PLAN_SYSTEM, parts, { temperature: 0.3, maxOutputTokens: 1600 })
+      this._req(PLAN_SYSTEM, parts, { temperature: 0.3, maxOutputTokens: 3000 })
     );
 
     const parsed = parseJson(res.text);

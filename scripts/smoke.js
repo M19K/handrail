@@ -257,6 +257,57 @@ async function run() {
   check('the first question is still readable', counts.firstPromptStillThere);
   check('checklist rendered inside the transcript', counts.steps === 4, `${counts.steps} steps`);
 
+  // --- answers must keep their structure ---------------------------------
+  //
+  // Every list the model wrote used to collapse into one grey paragraph with
+  // stray hyphens in it, because the renderer only understood paragraphs. That
+  // is most of why answers read as thin and generic — the structure was being
+  // thrown away between the model and the screen.
+  console.log('\nanswer formatting');
+
+  llm.respond = async () => ({
+    kind: 'answer',
+    markdown: [
+      "The note's path inside the vault is `03-Areas/Westcliff Scratch/Assignment Agent`.",
+      '',
+      'To find it on disk:',
+      '',
+      '- Right-click the file in the left sidebar',
+      '- Click **Reveal in File Explorer**',
+      '  - On macOS this reads **Show in system explorer**',
+      '- Windows opens the folder containing the `.md` file',
+      '',
+      'If you want the vault root instead:',
+      '',
+      '1. Click the vault name at the bottom left',
+      '2. Open **Manage vaults**',
+      '3. The folder location is listed there',
+    ].join('\n'),
+  });
+
+  await submit('where are these files on my disk?');
+
+  const shape = await feed(`(() => {
+    const last = [...document.querySelectorAll('.msg--assistant .prose')].pop();
+    return {
+      paragraphs: last.querySelectorAll('p').length,
+      bullets: last.querySelectorAll(':scope > ul > li').length,
+      nested: last.querySelectorAll('ul ul > li').length,
+      numbered: last.querySelectorAll('ol > li').length,
+      code: last.querySelectorAll('code').length,
+      bold: last.querySelectorAll('strong').length,
+      strayHyphen: /^\\s*-\\s/m.test(last.textContent),
+    };
+  })()`);
+
+  check('top-level bullets render as a list', shape.bullets === 3, JSON.stringify(shape));
+  check('nested bullets nest', shape.nested === 1, `${shape.nested}`);
+  check('numbered lists render as a list', shape.numbered === 3, `${shape.numbered}`);
+  check('inline code survives', shape.code >= 2, `${shape.code}`);
+  check('bold survives', shape.bold >= 2, `${shape.bold}`);
+  check('no raw markdown left in the text', !shape.strayHyphen);
+  await shoot(overlay, '9-formatted-answer');
+
   // --- follow-ups must not restart the task -------------------------------
   //
   // The reported bug: every prompt jumped straight to a checklist, so "now
