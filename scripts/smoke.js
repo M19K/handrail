@@ -226,7 +226,7 @@ async function run() {
           title: 'Add a cross dissolve between two clips',
           steps: [
             { text: 'Open the Effects panel from the Window menu.', hint: '', doneWhen: '', target: '' },
-            { text: 'Select the Razor tool in the toolbar on the left.', hint: '', doneWhen: '', target: '' },
+            { text: 'Select the **Razor tool** in the toolbar on the left.', hint: '', doneWhen: '', target: '' },
             { text: 'Cut both clips where they should overlap.', hint: '', doneWhen: '', target: '' },
             { text: 'Drag Cross Dissolve onto the join.', hint: 'Video Transitions → Dissolve.', doneWhen: '', target: '' },
           ],
@@ -305,6 +305,20 @@ async function run() {
   check('numbered lists render as a list', shape.numbered === 3, `${shape.numbered}`);
   check('inline code survives', shape.code >= 2, `${shape.code}`);
   check('bold survives', shape.bold >= 2, `${shape.bold}`);
+
+  // Checklist steps are markdown too. They were rendered with textContent, so
+  // every **bold** the model wrote showed up as literal asterisks — right in
+  // the part of the UI the user is meant to follow.
+  const stepMarkup = await feed(`(() => {
+    const steps = [...document.querySelectorAll('.step__text')];
+    return {
+      count: steps.length,
+      strong: steps.reduce((n, s) => n + s.querySelectorAll('strong').length, 0),
+      rawAsterisks: steps.some((s) => s.textContent.includes('**')),
+    };
+  })()`);
+  check('checklist steps render bold, not asterisks',
+    stepMarkup.strong >= 1 && !stepMarkup.rawAsterisks, JSON.stringify(stepMarkup));
   check('no raw markdown left in the text', !shape.strayHyphen);
   await shoot(overlay, '9-formatted-answer');
 

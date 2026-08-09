@@ -150,6 +150,13 @@ class TurnController {
       this.emit({ type: 'done', turnId: turn.id });
       this._record(text, { kind: 'answer', markdown: result.markdown });
       this.active = null;
+
+      // The model could see the current step was finished. Advance the checklist
+      // so it agrees with what the reply just said — and only for the step that
+      // is actually current, so a stale or invented index cannot skip ahead.
+      if (this.task && result.completedStep === this.task.activeIndex) {
+        await this.completeStep(this.task.taskId, this.task.activeIndex);
+      }
     }
   }
 
@@ -259,7 +266,12 @@ class TurnController {
 
       try {
         handle.busy = true;
-        const { buffer } = await captureDisplay(task.display, 'check');
+        // Excluded, like every other capture. This used to call captureDisplay
+        // directly, so with stealth off the overlay was in every check frame —
+        // the model judged "is this step done?" against a picture containing
+        // Handrail's own answer, and the frame diff fired on Handrail's own UI
+        // changing rather than the user's screen.
+        const { buffer } = await this._captureWithoutSelf(task.display, 'check');
         const sample = fingerprint(buffer);
 
         if (handle.lastSample === null) {

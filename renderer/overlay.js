@@ -548,13 +548,13 @@ function renderSteps() {
 
     const text = document.createElement('p');
     text.className = 'step__text';
-    text.textContent = step.text;
+    text.append(inline(step.text));
     body.append(text);
 
     if (step.hint) {
       const hint = document.createElement('span');
       hint.className = 'step__hint';
-      hint.textContent = step.hint;
+      hint.append(inline(step.hint));
       text.append(hint);
     }
 
@@ -612,13 +612,13 @@ function renderArchivedTask(msg, turn) {
     const body = document.createElement('div');
     const text = document.createElement('p');
     text.className = 'step__text';
-    text.textContent = step.text;
+    text.append(inline(step.text));
     body.append(text);
 
     if (step.hint) {
       const hint = document.createElement('span');
       hint.className = 'step__hint';
-      hint.textContent = step.hint;
+      hint.append(inline(step.hint));
       text.append(hint);
     }
 

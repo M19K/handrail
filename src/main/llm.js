@@ -150,7 +150,14 @@ class Llm {
       };
     }
 
-    return { kind: 'answer', markdown: String(parsed.markdown || parsed.answer || res.text || '').trim() };
+    // completedStep lets a conversational reply also tick the checklist, so the
+    // prose and the checklist cannot disagree about where the user is.
+    const step = Number(parsed.completedStep);
+    return {
+      kind: 'answer',
+      markdown: String(parsed.markdown || parsed.answer || res.text || '').trim(),
+      completedStep: Number.isInteger(step) && step > 0 ? step - 1 : null,
+    };
   }
 
   /** Stream a plain answer. Used when there is no screenshot to wait on. */
