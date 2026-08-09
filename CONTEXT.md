@@ -19,7 +19,7 @@ Last updated: 2026-08-09
 - shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
 - rebuild + reinstall: `node scripts/package-win.js --install`
 
-17 commits. `7909792` is pristine upstream, so `git diff 7909792..HEAD` is the
+19 commits. `7909792` is pristine upstream, so `git diff 7909792..HEAD` is the
 portfolio artifact: **93 files, +13,146 / −21,781** — it removes more than it adds,
 which is the point.
 
@@ -42,10 +42,11 @@ which is the point.
 
 ### Verification
 
-- `npm test` — 30 unit tests (geometry, key-format detection). Node's built-in
-  runner, no framework.
-- `npx electron scripts/smoke.js` — 49 checks against the real main process and
-  real preload, writing screenshots to `%TEMP%\handrail-smoke`.
+- `npm test` — **80 unit tests** (geometry, turn state machine, capture source
+  selection, store recovery, response shapes, key-format detection). Node's
+  built-in runner, no framework, no Electron.
+- `npx electron scripts/smoke.js` — **63 checks** against the real main process
+  and real preload, writing screenshots to `%TEMP%\handrail-smoke`.
 - The smoke test runs against a throwaway userData directory. It used to write
   to the real one, which mutated the installed app and made results depend on
   the previous run.
@@ -53,24 +54,24 @@ which is the point.
 ### Review status (2026-08-09)
 
 First independent review run: gstack `/review` with three specialist agents.
-**28 findings, 8 fixed, 20 open** — the full list with file/line and fixes is in
+**27 findings, 27 fixed** — the full list with the fix and its test is in
 [`docs/REVIEW-2026-08-09.md`](docs/REVIEW-2026-08-09.md). Read it before
 touching `src/main/turn.js`.
 
-The worst one already fixed: `.env` overrode the stored API key in the
-*packaged* app, and dotenv ships inside it — a `.env` dropped beside the
-executable silently rerouted every screenshot through someone else's OpenRouter
-account, with nothing on screen to say so.
+The two worst are closed. `.env` no longer overrides the stored API key in a
+*packaged* build — dotenv ships inside the app, so a `.env` dropped beside the
+executable used to silently reroute every screenshot through someone else's
+OpenRouter account. And an arrow can no longer be drawn after the user has
+hidden Handrail: `this.epoch` is now captured and checked across every await in
+`_pointAtTarget`, not merely bumped.
 
-The worst one still open: an arrow can be drawn AFTER the user has hidden
-Handrail, because `_pointAtTarget` never re-checks state after its awaits
-(C5 in the review doc). `this.epoch` exists and is bumped; it is not yet
-consumed.
+One thing the review named is genuinely still open: `llm.respond()` is never
+executed in a test, because the client is constructed inside `_client()` rather
+than injected.
 
 ### Known gaps, in priority order
 
-1. **20 open review findings** — see `docs/REVIEW-2026-08-09.md`. Six are
-   critical.
+1. **`llm.respond()` has no test** — see the last section of the review doc.
 2. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
    (e.g. Obsidian's vault location) survive every prompt change so far. The next
    real lever is a verification pass — have the model check its own plan against
@@ -79,6 +80,17 @@ consumed.
    it (`.github/workflows/release.yml`) but nobody has opened the .dmg.
 4. **No `/qa` run** (Playwright `_electron`). `/review` is done; `/ship` is not.
 5. **Onboarding is untested by a real user other than the author.**
+
+### Traps added by the review fixes
+
+- **`this.epoch` must be captured before the first await and checked after every
+  one.** Any new async path that ends in `point()` or `emit()` needs the same
+  guard, or the arrow-after-hide bug comes straight back.
+- **`hr:ask` carries `threadId`.** Any new caller that omits it silently
+  inherits whatever thread was last pinned.
+- **`mock-bridge.js` is not packaged.** The `<script>` tag in `overlay.html`
+  404s in a shipped build and that is correct — do not "fix" it by shipping the
+  file.
 
 ### Traps
 
@@ -325,8 +337,8 @@ and the design order was: identity → design system → `/design-shotgun` →
 | `/design-html` | **substituted** | Renderer written directly. |
 | `impeccable`, `emil-design-eng`, animation trio | **skipped** | No polish pass has been run. |
 | `/qa` | **not run** | Playwright `_electron` path untested. `scripts/smoke.js` covers some of the same ground but is bespoke. |
-| `/review` | **not run** | No pre-landing review of the diff. |
-| `/ship` | **not run** | No VERSION bump, no CHANGELOG, no PR. There is no git remote yet. |
+| `/review` | **done** | 2026-08-09. 27 findings, all 27 fixed — `docs/REVIEW-2026-08-09.md`. |
+| `/ship` | **not run** | No VERSION bump, no CHANGELOG, no PR. |
 
 ### The honest summary
 
@@ -344,9 +356,8 @@ lag, the turn-id race, the undecryptable key). But it means:
 
 ### What to do about it, in order
 
-1. **`/review`** — a pre-landing review of `git diff 7909792..HEAD`. Highest
-   value: 93 files changed and nobody but the author has read them.
+1. ~~**`/review`**~~ — done 2026-08-09, then all 27 findings fixed.
 2. **`/qa`** — a real Playwright `_electron` pass, to cover what `smoke.js` does
    not.
 3. **`impeccable` + `emil-design-eng`** — the polish pass, once behaviour settles.
-4. **`/ship`** — needs a git remote and a repo name first, both still open.
+4. **`/ship`** — the remote exists now, so this is unblocked.
