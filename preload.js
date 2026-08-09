@@ -61,6 +61,10 @@ contextBridge.exposeInMainWorld('handrail', {
   },
 
   // --- settings -----------------------------------------------------------
+  // Vision-capable models, fetched live from OpenRouter so the choice is not
+  // limited to whatever ids were known when this was written.
+  models: () => call('hr:models:list'),
+
   settings: {
     get: () => call('hr:settings:get'),
     set: (patch) => call('hr:settings:set', patch),

@@ -104,6 +104,7 @@ function setPanel(which) {
   el.toggleSettings.setAttribute('aria-pressed', String(state.panel === 'settings'));
 
   if (state.panel === 'threads') refreshThreads();
+  if (state.panel === 'settings' && modelList === null) loadModels();
   scheduleResize();
 }
 
@@ -831,18 +832,41 @@ const SETTING_ROWS = [
  */
 
 /**
- * Models offered in Settings. Every one must be vision-capable — Handrail's
- * whole premise is reading the screen, and a text-only model fails in a way
- * that looks like the app being stupid rather than misconfigured.
+ * Fallback model list, used only when OpenRouter cannot be reached.
  *
- * Any OpenRouter id works via OPENROUTER_MODEL; this list is the curated set.
+ * The real list is fetched live and filtered to models that accept images —
+ * hard-coding it limited the choice to whatever ids were known when this was
+ * written, and a retired id fails at request time with a provider error that
+ * reads as Handrail being broken.
  */
-const MODELS = [
-  { id: 'google/gemini-2.5-flash',     label: 'Gemini 2.5 Flash — fast, cheapest' },
-  { id: 'google/gemini-2.5-pro',       label: 'Gemini 2.5 Pro — better on dense UI' },
-  { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5 — strongest reasoning' },
-  { id: 'openai/gpt-4o',               label: 'GPT-4o' },
+const FALLBACK_MODELS = [
+  { id: 'google/gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
+  { id: 'google/gemini-3.6-flash', name: 'Gemini 3.6 Flash' },
+  { id: 'anthropic/claude-sonnet-5', name: 'Claude Sonnet 5' },
+  { id: 'anthropic/claude-opus-5', name: 'Claude Opus 5' },
 ];
+
+/**
+ * Pinned to the top of a list that runs to a couple of hundred entries.
+ *
+ * A spread from cheapest-adequate to strongest, not a ranking. Reading a
+ * cluttered screen accurately is what separates a useful answer from a
+ * confident wrong one, so the choice is worth making deliberately.
+ */
+const SUGGESTED = [
+  'google/gemini-3.5-flash-lite',
+  'google/gemini-3.6-flash',
+  'anthropic/claude-sonnet-5',
+  'anthropic/claude-opus-5',
+];
+
+let modelList = null;
+
+function priceLabel(model) {
+  if (!model.inPrice && !model.outPrice) return '';
+  const round = (n) => (n >= 1 ? n.toFixed(2) : n.toFixed(3)).replace(/\.?0+$/, '');
+  return `  ·  $${round(model.inPrice)}/$${round(model.outPrice)} per M`;
+}
 
 async function refreshSettings() {
   state.settings = await bridge.settings.get();
@@ -887,25 +911,48 @@ function renderSettings() {
   const modelB = document.createElement('b');
   modelB.textContent = 'Model';
   const modelNote = document.createElement('span');
-  modelNote.textContent = 'All of these can read your screen';
+  modelNote.textContent = modelList
+    ? 'Only models that can read your screen are listed'
+    : 'Loading the full list…';
   modelLabel.append(modelB, modelNote);
 
   const select = document.createElement('select');
   select.className = 'select';
   select.setAttribute('aria-label', 'Model');
 
-  const known = MODELS.some((m) => m.id === state.settings.model);
-  for (const model of MODELS) {
-    const option = document.createElement('option');
-    option.value = model.id;
-    option.textContent = model.label;
-    if (model.id === state.settings.model) option.selected = true;
-    select.append(option);
+  const all = modelList && modelList.length ? modelList : FALLBACK_MODELS;
+
+  // A handful of sensible defaults first, then everything else. The full list
+  // runs to dozens of models and alphabetical order alone buries the ones most
+  // people should actually pick.
+  const suggested = SUGGESTED.map((id) => all.find((m) => m.id === id)).filter(Boolean);
+  const rest = all.filter((m) => !SUGGESTED.includes(m.id));
+
+  const addOptions = (group, models) => {
+    for (const model of models) {
+      const option = document.createElement('option');
+      option.value = model.id;
+      option.textContent = model.name + priceLabel(model);
+      if (model.id === state.settings.model) option.selected = true;
+      group.append(option);
+    }
+  };
+
+  if (suggested.length) {
+    const group = document.createElement('optgroup');
+    group.label = 'Suggested';
+    addOptions(group, suggested);
+    select.append(group);
   }
 
-  // A model set through OPENROUTER_MODEL or an older build would otherwise
-  // silently show as whatever happens to be first in the list.
-  if (!known && state.settings.model) {
+  const group = document.createElement('optgroup');
+  group.label = suggested.length ? `All vision models (${rest.length})` : 'Models';
+  addOptions(group, rest);
+  select.append(group);
+
+  // A model set through OPENROUTER_MODEL, or one that has since been retired,
+  // would otherwise silently display as whichever entry sorts first.
+  if (state.settings.model && !all.some((m) => m.id === state.settings.model)) {
     const option = document.createElement('option');
     option.value = state.settings.model;
     option.textContent = `${state.settings.model} (set outside Handrail)`;
@@ -940,6 +987,22 @@ function renderSettings() {
 
   el.settingsBody.replaceChildren(frag);
   scheduleResize();
+}
+
+/**
+ * Fetch the model list once, lazily.
+ *
+ * On opening Settings rather than at boot: it is a network call the user has
+ * not asked for until they look at the dropdown, and the fallback list means
+ * the control works immediately either way.
+ */
+async function loadModels() {
+  try {
+    modelList = await bridge.models();
+  } catch (_) {
+    modelList = [];
+  }
+  if (state.panel === 'settings') renderSettings();
 }
 
 async function updateSetting(key, value) {

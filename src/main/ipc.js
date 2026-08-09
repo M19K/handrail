@@ -57,6 +57,68 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     return next;
   });
 
+  /**
+   * The model list, fetched live from OpenRouter.
+   *
+   * Hard-coding it meant the choice was limited to whatever four ids happened
+   * to be known when the dropdown was written — and a hard-coded id that gets
+   * renamed or retired fails at request time with a provider error, which reads
+   * as Handrail being broken.
+   *
+   * Filtered to models that accept images, because Handrail's whole premise is
+   * reading the screen and a text-only model fails in a way that looks like the
+   * app being stupid rather than misconfigured. The endpoint needs no key.
+   */
+  let modelCache = null;
+  handle('hr:models:list', async () => {
+    if (modelCache) return modelCache;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/models', { signal: controller.signal });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const body = await res.json();
+
+      const models = (body.data || [])
+        .filter((m) => {
+          const arch = m.architecture || {};
+          const inputs = arch.input_modalities || [];
+          const outputs = arch.output_modalities || ['text'];
+
+          // Must read images — that is the whole premise.
+          if (!(inputs.includes('image') || /image/.test(arch.modality || ''))) return false;
+          // Must answer in text. Image-generation models accept a picture and
+          // reply with another picture, which is not an answer.
+          if (!outputs.includes('text')) return false;
+          // Batch endpoints are queued and asynchronous. Offering one in an
+          // interactive overlay is offering a model that never replies.
+          if (/:batch$/.test(m.id)) return false;
+
+          return true;
+        })
+        .map((m) => ({
+          id: m.id,
+          name: m.name || m.id,
+          // Per million tokens, which is the unit people actually compare.
+          inPrice: Number(m.pricing && m.pricing.prompt) * 1e6 || 0,
+          outPrice: Number(m.pricing && m.pricing.completion) * 1e6 || 0,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      if (models.length) modelCache = models;
+      return models;
+    } catch (err) {
+      // Offline, or the endpoint changed shape. The renderer falls back to a
+      // small built-in list rather than showing an empty dropdown.
+      console.warn('[ipc] could not fetch model list:', err.message);
+      return [];
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
   // --- window -------------------------------------------------------------
   handle('hr:window:state', (state) => {
     // Collapsing tears down anything still on screen: an arrow left pointing at

@@ -19,7 +19,10 @@ const DEFAULT_SETTINGS = {
   pointing: true,    // draw the arrow
   stealth: true,     // hide from screen capture
   watching: true,    // auto-advance steps by looking at the screen
-  model: 'google/gemini-2.5-flash',
+  // Same price as the previous default, a generation newer. Accuracy at
+  // reading a screen is the whole product, so the cheapest adequate model is
+  // the right default — not the cheapest model.
+  model: 'google/gemini-3.5-flash-lite',
 };
 
 class Store {

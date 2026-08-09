@@ -173,6 +173,13 @@
       },
     },
 
+    models: () => Promise.resolve([
+      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', inPrice: 0.3, outPrice: 2.5 },
+      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', inPrice: 1.25, outPrice: 10 },
+      { id: 'anthropic/claude-sonnet-4.5', name: 'Claude Sonnet 4.5', inPrice: 3, outPrice: 15 },
+      { id: 'openai/gpt-4o', name: 'GPT-4o', inPrice: 2.5, outPrice: 10 },
+    ]),
+
     settings: {
       get: () => Promise.resolve({ ...settings }),
       set: (patch) => Promise.resolve(Object.assign(settings, patch)),
