@@ -62,6 +62,35 @@ function formatHistory(history) {
   }).join('\n\n');
 }
 
+/**
+ * The prose for an answer, including a plan too short to be a checklist.
+ *
+ * The task branch requires more than one step, so a model that correctly
+ * returned `kind:"task"` with a single step fell through to here — where
+ * `markdown` is absent and the fallback was `res.text`, i.e. the whole JSON
+ * blob, printed at the user verbatim. Never showing raw JSON matters more than
+ * where the text came from.
+ */
+function answerFrom(parsed, raw) {
+  const written = String(parsed.markdown || parsed.answer || '').trim();
+  if (written) return written;
+
+  if (parsed.kind === 'task' && Array.isArray(parsed.steps)) {
+    const steps = parsed.steps
+      .map((s) => String((s && s.text) || '').trim())
+      .filter(Boolean);
+    if (steps.length) {
+      const title = String(parsed.title || '').trim();
+      // One step is a sentence, not a list. More than one only reaches here if
+      // every other step was blank, in which case a list is still right.
+      const body = steps.length === 1 ? steps[0] : steps.map((t) => `- ${t}`).join('\n');
+      return title && steps.length > 1 ? `**${title}**\n\n${body}` : body;
+    }
+  }
+
+  return String(raw || '').trim();
+}
+
 class Llm {
   constructor(getKey, getModel) {
     this.getKey = getKey;
@@ -78,12 +107,18 @@ class Llm {
     return new OpenRouterClient({ apiKey: key });
   }
 
-  _req(system, parts, { temperature = 0.2, maxOutputTokens = 1400 } = {}) {
+  /**
+   * `signal` is threaded all the way to fetch. Without it, cancelling a slow
+   * vision call left the request running and billed — only the reply was
+   * discarded — so Escape looked like a cancel and was not one.
+   */
+  _req(system, parts, { temperature = 0.2, maxOutputTokens = 1400, signal } = {}) {
     return {
       model: this.getModel(),
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts }],
       config: { temperature, maxOutputTokens },
+      signal,
     };
   }
 
@@ -97,7 +132,7 @@ class Llm {
    * a product requirement (PRODUCT.md); making it a separate request would not
    * make it more reliable.
    */
-  async respond({ prompt, screenshot, history, activeTask }) {
+  async respond({ prompt, screenshot, history, activeTask, signal }) {
     const parts = [];
     if (screenshot) parts.push(imagePart(screenshot));
 
@@ -125,7 +160,7 @@ class Llm {
     parts.push({ text: prompt });
 
     const res = await this._client().models.generateContent(
-      this._req(PLAN_SYSTEM, parts, { temperature: 0.3, maxOutputTokens: 3000 })
+      this._req(PLAN_SYSTEM, parts, { temperature: 0.3, maxOutputTokens: 3000, signal })
     );
 
     const parsed = parseJson(res.text);
@@ -155,7 +190,11 @@ class Llm {
     const step = Number(parsed.completedStep);
     return {
       kind: 'answer',
-      markdown: String(parsed.markdown || parsed.answer || res.text || '').trim(),
+      // `answerFrom` handles the one-step plan. A checklist of one is not a
+      // checklist — PRODUCT.md — but the fall-through used `res.text`, so a
+      // valid single-step task was shown to the user as the raw JSON blob the
+      // model returned. It becomes an ordinary answer instead.
+      markdown: answerFrom(parsed, res.text),
       // An ordinary answer can point at something too — see turn.js.
       target: parsed.target ? String(parsed.target).trim() : '',
       completedStep: Number.isInteger(step) && step > 0 ? step - 1 : null,
@@ -187,10 +226,10 @@ class Llm {
    * Normalised 0–1000 coordinates, never pixels — see src/main/geometry.js
    * for why that makes the whole DPI and multi-monitor problem disappear.
    */
-  async locate({ screenshot, target }) {
+  async locate({ screenshot, target, signal }) {
     const res = await this._client().models.generateContent(
       this._req(LOCATE_SYSTEM, [imagePart(screenshot), { text: `Find: ${target}` }],
-        { temperature: 0, maxOutputTokens: 300 })
+        { temperature: 0, maxOutputTokens: 300, signal })
     );
     return parseJson(res.text);
   }
@@ -219,15 +258,15 @@ class Llm {
    * yes/no against a criterion written at plan time. It runs far more often
    * than anything else, so its cost sets whether watching is viable at all.
    */
-  async checkStep({ screenshot, stepText, doneWhen }) {
+  async checkStep({ screenshot, stepText, doneWhen, signal }) {
     const res = await this._client().models.generateContent(
       this._req(CHECK_SYSTEM, [
         imagePart(screenshot),
         { text: `Step: ${stepText}\nComplete when: ${doneWhen || stepText}` },
-      ], { temperature: 0, maxOutputTokens: 200 })
+      ], { temperature: 0, maxOutputTokens: 200, signal })
     );
     return parseJson(res.text);
   }
 }
 
-module.exports = { Llm, parseJson };
+module.exports = { Llm, parseJson, answerFrom };

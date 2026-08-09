@@ -17,7 +17,20 @@
 
 'use strict';
 
+/**
+ * The preload bridge. There is no fallback, deliberately.
+ *
+ * `mock-bridge.js` fills this in for the standalone dev harness and is excluded
+ * from every packaged build — because a shipped mock means a preload that
+ * failed to load presents a fully working-looking overlay with invented threads
+ * and a canned answer, and nothing on screen says so. Failing loudly here is
+ * the whole point.
+ */
 const bridge = window.handrail;
+if (!bridge) {
+  document.body.textContent = 'Handrail could not start: the app bridge is missing. Please reinstall.';
+  throw new Error('window.handrail is missing — preload did not load');
+}
 
 // ---------------------------------------------------------------------------
 // Element handles
@@ -237,7 +250,15 @@ async function ask(text) {
   state.turnId = turnId;
 
   try {
-    await bridge.ask({ text: prompt, capture: state.settings.capture, turnId });
+    // The open thread goes with the ask. Main cannot know it — `openThread` is
+    // a renderer action — so it used to guess "most recently updated", and a
+    // follow-up in an old thread was written to the newest one instead.
+    await bridge.ask({
+      text: prompt,
+      capture: state.settings.capture,
+      turnId,
+      threadId: state.openThreadId,
+    });
   } catch (err) {
     showError((err && err.message) || 'Could not reach Handrail.', true);
   }
@@ -431,6 +452,13 @@ function renderProse(target, markdown) {
           break;
         }
 
+        // Kind is decided once, when the list opens, but the loop used to
+        // accept both kinds — so `- a\n- b\n1. first` produced ONE <ul> with
+        // three items in it and the numbering vanished. A top-level item of the
+        // other kind ends this list and starts the next.
+        const itemOrdered = !BULLET.test(lines[i]);
+        if (item[1].length <= baseIndent + 1 && itemOrdered !== ordered) break;
+
         const li = document.createElement('li');
         li.append(inline(item[2]));
 
@@ -486,6 +514,10 @@ function renderTask(event) {
     title: event.title,
     activeIndex: 0,
     list,
+    // Main auto-advances the checklist by looking at the screen. When it gives
+    // up it says so, and the list has to stop pretending otherwise.
+    watching: true,
+    watchNote: '',
     steps: event.steps.map((s, i) => ({
       text: s.text,
       hint: s.hint || '',
@@ -519,6 +551,20 @@ function updateStep(event) {
     step.status = 'active';
     step.correction = '';
     task.activeIndex = event.index;
+    // Reopening a step restarts watching in main, so the warning has to go.
+    task.watching = true;
+    task.watchNote = '';
+  } else if (event.status === 'offplan' || event.status === 'unwatched') {
+    // Main has stopped watching. Both of these used to fall through to a
+    // redraw that looked identical, leaving a checklist that appeared live and
+    // would never advance again — with nothing to say the ticks are now the
+    // user's job. `offplan` means the screen went somewhere else; `unwatched`
+    // means three checks in a row came back unreadable and we stopped paying
+    // for a fourth.
+    task.watching = false;
+    task.watchNote = event.status === 'offplan'
+      ? "That's not the screen this checklist is for — tick steps off yourself, or ask again."
+      : "Can't tell when these steps finish — tick them off yourself as you go.";
   }
 
   renderSteps();
@@ -583,6 +629,15 @@ function renderSteps() {
     row.append(mark, body);
     frag.append(row);
   });
+
+  // Say when the ticks have become the user's job. Without this, a checklist
+  // main has stopped watching looks exactly like one it is still watching.
+  if (task.watching === false && task.watchNote) {
+    const note = document.createElement('p');
+    note.className = 'steps__note';
+    note.textContent = task.watchNote;
+    frag.append(note);
+  }
 
   task.list.replaceChildren(frag);
   followIfAtBottom(wasAtBottom);

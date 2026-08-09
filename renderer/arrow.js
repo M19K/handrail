@@ -33,6 +33,9 @@ function el(name, attrs) {
 
 function draw(payload) {
   stage.replaceChildren();
+  // The label just drawn was detached by replaceChildren. Anything still
+  // holding it would measure a rect of all zeros.
+  currentLabel = null;
   if (!payload || !payload.layout) return;
 
   const { tip, tail, ctrl, head, spread, approach } = payload.layout;
@@ -97,7 +100,7 @@ function draw(payload) {
   label.append(body, close);
   stage.append(label);
 
-  trackHover(label);
+  currentLabel = label;
 
   // Measure, then place. The window was sized against a generous reservation
   // for the label, so this only has to position within space already allowed.
@@ -133,17 +136,29 @@ function setInteractive(on) {
   window.handrailArrow.setInteractive(on);
 }
 
-function trackHover(label) {
-  const inside = (event) => {
-    const box = label.getBoundingClientRect();
-    return event.clientX >= box.left && event.clientX <= box.right
-        && event.clientY >= box.top && event.clientY <= box.bottom;
-  };
+/**
+ * The label currently on stage, or null.
+ *
+ * Module-level, and the two listeners below are registered ONCE against it.
+ * They used to be registered from draw(), which runs on every arrow — so each
+ * arrow added a pair that closed over a label `stage.replaceChildren()` had
+ * already detached. A detached node's rect is all zeros, so every mouse move
+ * fired N stale `setInteractive(false)` calls plus the live `true`, sending two
+ * IPC messages per move and defeating the only-on-change contract. The arrow
+ * window is never destroyed, so it grew for the whole session.
+ */
+let currentLabel = null;
 
-  document.addEventListener('mousemove', (event) => setInteractive(inside(event)));
-  // The cursor can leave through an edge without a final mousemove inside.
-  document.addEventListener('mouseleave', () => setInteractive(false));
-}
+const insideLabel = (event) => {
+  if (!currentLabel || !currentLabel.isConnected) return false;
+  const box = currentLabel.getBoundingClientRect();
+  return event.clientX >= box.left && event.clientX <= box.right
+      && event.clientY >= box.top && event.clientY <= box.bottom;
+};
+
+document.addEventListener('mousemove', (event) => setInteractive(insideLabel(event)));
+// The cursor can leave through an edge without a final mousemove inside.
+document.addEventListener('mouseleave', () => setInteractive(false));
 
 window.handrailArrow.onDraw((payload) => {
   setInteractive(false);   // a fresh marker starts click-through

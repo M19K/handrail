@@ -47,11 +47,45 @@ function nativeSize(display) {
 }
 
 /**
+ * Pick the capture source for a display, and say HOW it was picked.
+ *
+ * Pure, and exported, so the matching rules can be tested without Electron —
+ * this is the code that decides which monitor the model is shown, and it had no
+ * test at all.
+ *
+ * `matched` is the important part:
+ *   'display_id' — certain. The compositor named the display.
+ *   'size'       — a guess. Two monitors of the same aspect ratio defeat it.
+ *   'fallback'   — not a match at all. Just the first source there was.
+ *
+ * The caller has to be able to tell those apart. The ask path checks the
+ * aspect ratio and disables pointing on a mismatch, but the watch tick used to
+ * check nothing — so with an empty `display_id` every step check for a task on
+ * the second monitor silently judged the primary screen instead.
+ */
+function selectSource(sources, display, requested) {
+  const wanted = String(display.id);
+  const byId = sources.find((s) => String(s.display_id) === wanted);
+  if (byId) return { source: byId, matched: 'display_id' };
+
+  // Kept because `display_id` is empty on some Linux compositors, but this is
+  // the behaviour that used to be the bug.
+  const bySize = sources.find((s) => {
+    const size = s.thumbnail.getSize();
+    return size.width === requested.width && size.height === requested.height;
+  });
+  if (bySize) return { source: bySize, matched: 'size' };
+
+  return { source: sources[0], matched: 'fallback' };
+}
+
+/**
  * Capture one display.
  *
  * `quality: 'full'` for locating controls, `'check'` for completion checks.
- * Returns { buffer, size, display } — `size` is the actual captured pixel size,
- * which the caller needs because desktopCapturer may clamp what it was asked for.
+ * Returns { buffer, size, display, matched } — `size` is the actual captured
+ * pixel size, which the caller needs because desktopCapturer may clamp what it
+ * was asked for, and `matched` is how confident the display match was.
  */
 async function captureDisplay(display, quality = 'full') {
   const native = nativeSize(display);
@@ -71,22 +105,12 @@ async function captureDisplay(display, quality = 'full') {
   });
   if (!sources.length) throw new Error('No screen sources available');
 
-  const wanted = String(display.id);
-  let source = sources.find((s) => String(s.display_id) === wanted);
-
-  if (!source) {
-    // Fallback only. Kept because `display_id` is empty on some Linux
-    // compositors, but it is the behaviour that used to be the bug.
-    source = sources.find((s) => {
-      const size = s.thumbnail.getSize();
-      return size.width === requested.width && size.height === requested.height;
-    }) || sources[0];
-  }
+  const { source, matched } = selectSource(sources, display, requested);
 
   const image = source.thumbnail;
   if (!image || image.isEmpty()) throw new Error('Screen capture returned an empty image');
 
-  return { buffer: image.toPNG(), size: image.getSize(), display };
+  return { buffer: image.toPNG(), size: image.getSize(), display, matched };
 }
 
 /**
@@ -104,4 +128,4 @@ function captureMatchesDisplay(size, display) {
   return Math.abs(imageAspect - displayAspect) / displayAspect <= 0.01;
 }
 
-module.exports = { captureDisplay, displayForWindow, captureMatchesDisplay, nativeSize };
+module.exports = { captureDisplay, displayForWindow, captureMatchesDisplay, nativeSize, selectSource };

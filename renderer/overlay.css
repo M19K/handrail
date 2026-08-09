@@ -445,6 +445,17 @@ button {
   color: var(--text-secondary);
 }
 
+/* Shown when main has stopped watching the screen and the ticks are now the
+   user's job. Quiet on purpose — it is information, not an error. */
+.steps__note {
+  margin-top: var(--space-2);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--text-tertiary);
+}
+
 /* ----------------------------------------------------------------------------
    Side panels
    -------------------------------------------------------------------------- */

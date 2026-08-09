@@ -32,8 +32,18 @@ class Store {
     this.threadsPath = path.join(this.dir, 'threads.json');
     this.keyPath = path.join(this.dir, 'key.dat');
 
-    this.settings = { ...DEFAULT_SETTINGS, ...this._readJson(this.settingsPath, {}) };
-    this.threads = this._readJson(this.threadsPath, []);
+    // Shape-checked, not just parse-checked. `_readJson` recovers from
+    // unparseable JSON but returns whatever DID parse — so a `threads.json`
+    // containing `null` (or `{}`, or `3`) set this.threads to that and the
+    // first listThreads() threw on boot, which is exactly the failure the
+    // recovery exists to prevent.
+    const settings = this._readJson(this.settingsPath, {});
+    const threads = this._readJson(this.threadsPath, []);
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...(settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {}),
+    };
+    this.threads = Array.isArray(threads) ? threads.filter((t) => t && typeof t === 'object') : [];
     this._key = null;
     // Set when a stored key was found but could not be decrypted, so
     // onboarding can explain rather than looking like a fresh install.
@@ -125,34 +135,49 @@ class Store {
       return this._key;
     } catch (err) {
       /**
-       * The ciphertext is intact but this machine can no longer decrypt it.
+       * The stored key could not be read.
        *
-       * On Windows the encryption key lives in `Local State` inside userData;
-       * if that is regenerated the stored blob is orphaned permanently. Retrying
-       * will never work, so the file is discarded and the reason recorded —
-       * otherwise the app silently falls back to "no key set", drops the user
-       * into onboarding as though it were a fresh install, and never explains
-       * why the key they already entered has vanished.
+       * Usually permanent: on Windows the encryption key lives in `Local State`
+       * inside userData, and if that is regenerated the blob is orphaned
+       * forever. But not always — a keyring that is not ready yet fails exactly
+       * the same way, and this used to DELETE the file on any throw at all,
+       * which turns a transient failure into permanent data loss.
+       *
+       * The file is left alone now. Nothing is gained by removing it: `saveKey`
+       * overwrites it anyway, the user is sent to onboarding either way, and a
+       * failure that turns out to be transient simply recovers on the next
+       * launch. `keyProblem` is what onboarding reads to explain itself instead
+       * of looking like a fresh install.
        */
-      console.warn('[store] stored key cannot be decrypted on this machine; discarding it');
+      console.warn('[store] stored key could not be read:', err.message);
       this.keyProblem = 'unreadable';
-      try { fs.unlinkSync(this.keyPath); } catch (_) { /* best effort */ }
       return null;
     }
   }
 
-  /** Masked tail. The only form of the key the renderer is ever given. */
+  /**
+   * Masked tail. The only form of the key the renderer is ever given.
+   *
+   * The head and tail slices overlap below 13 characters, so a short value was
+   * printed almost whole — `OPENROUTER_API_KEY=short` produced the hint
+   * `Unknown · short••••hort`. Below that length nothing but the provider is
+   * shown; a hint is not worth leaking the thing it is hiding.
+   */
   keyHint() {
     const key = this.getKey();
     if (!key) return '';
-    return `${providerOf(key)} · ${key.slice(0, 9)}••••${key.slice(-4)}`;
+    const provider = providerOf(key);
+    if (key.length < 13) return `${provider} · ••••`;
+    return `${provider} · ${key.slice(0, 9)}••••${key.slice(-4)}`;
   }
 
   // --- threads ------------------------------------------------------------
 
   listThreads() {
     return this.threads
-      .map(({ id, title, updatedAt }) => ({ id, title, updatedAt }))
+      // updatedAt is coerced because a hand-edited or half-written threads.json
+      // with it missing sorts to NaN and scrambles the whole list.
+      .map(({ id, title, updatedAt }) => ({ id, title, updatedAt: Number(updatedAt) || 0 }))
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }
 

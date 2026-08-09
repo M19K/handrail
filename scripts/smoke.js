@@ -322,6 +322,26 @@ async function run() {
   check('no raw markdown left in the text', !shape.strayHyphen);
   await shoot(overlay, '9-formatted-answer');
 
+  // A numbered list straight after a bulleted one, with no blank line between.
+  // The list KIND was decided once when the list opened but the item loop
+  // accepted both, so this produced a single <ul> of three items and the
+  // numbering disappeared.
+  llm.respond = async () => ({ kind: 'answer', markdown: '- alpha\n- beta\n1. first\n2. second' });
+  await submit('show me both kinds of list');
+  const adjacent = await feed(`(() => {
+    const last = [...document.querySelectorAll('.msg--assistant .prose')].pop();
+    return {
+      uls: last.querySelectorAll(':scope > ul').length,
+      ols: last.querySelectorAll(':scope > ol').length,
+      bullets: last.querySelectorAll(':scope > ul > li').length,
+      numbered: last.querySelectorAll(':scope > ol > li').length,
+    };
+  })()`);
+  check('a numbered list after a bulleted one stays numbered',
+    adjacent.uls === 1 && adjacent.ols === 1
+      && adjacent.bullets === 2 && adjacent.numbered === 2,
+    JSON.stringify(adjacent));
+
   // --- follow-ups must not restart the task -------------------------------
   //
   // The reported bug: every prompt jumped straight to a checklist, so "now
@@ -576,6 +596,132 @@ async function run() {
 
   windows.showArrow(null);
   check('arrow hides on clear', windows.arrow && !windows.arrow.isVisible());
+
+  // Hover tracking used to register a fresh pair of document listeners inside
+  // draw(), so every arrow added one more — each closing over a label that
+  // replaceChildren() had already detached, whose rect is all zeros. Every
+  // mouse move then fired N stale `false` calls plus the live `true`, sending
+  // two IPC messages per move and defeating the only-on-change contract. The
+  // arrow window is never destroyed, so it grew for the whole session.
+  for (let i = 0; i < 5; i += 1) {
+    windows.showArrow({ display, layout, label: `Pass ${i}`, instruction: 'Select the Razor tool.' });
+    await new Promise((r) => setTimeout(r, 150));
+  }
+
+  let interactiveCalls = 0;
+  const realSetInteractive = windows.setArrowInteractive.bind(windows);
+  windows.setArrowInteractive = (on) => { interactiveCalls += 1; return realSetInteractive(on); };
+
+  await windows.arrow.webContents.executeJavaScript(`(() => {
+    const box = document.querySelector('.label').getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    for (let i = 0; i < 3; i += 1) {
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
+    }
+    return true;
+  })()`);
+  await new Promise((r) => setTimeout(r, 300));
+  windows.setArrowInteractive = realSetInteractive;
+
+  check('hover tracking does not accumulate listeners across arrows',
+    interactiveCalls === 1,
+    `${interactiveCalls} IPC messages for 3 moves inside the label after 6 arrows`);
+
+  windows.showArrow(null);
+
+  // --- a checklist must never look live when it is not --------------------
+  //
+  // Main emits `offplan` and `unwatched` when it stops watching the screen.
+  // The renderer branched on wrong/done/active only, so both redrew the list
+  // identically — leaving something that looked live and would never advance,
+  // with nothing to say the ticks had become the user's job.
+  console.log('\nwhen watching stops');
+
+  await store.setSettings({ capture: false, pointing: false });
+  await feed(`(() => {
+    const b = document.getElementById('toggle-capture');
+    if (b.getAttribute('aria-pressed') === 'true') b.click();
+  })()`);
+
+  llm.respond = async () => ({
+    kind: 'task',
+    title: 'Fix the printer',
+    steps: [
+      { text: 'Open Settings', hint: '', doneWhen: '', target: '' },
+      { text: 'Click Printers & scanners', hint: '', doneWhen: '', target: '' },
+    ],
+  });
+  await submit('how do I fix the printer?');
+  check('a checklist is on screen to test against', !!turns.task, String(turns.task && turns.task.taskId));
+
+  const taskId = turns.task.taskId;
+  overlay.webContents.send('hr:turn', { type: 'step', taskId, index: 0, status: 'unwatched' });
+  await new Promise((r) => setTimeout(r, 300));
+  const unwatchedNote = await feed("(document.querySelector('.steps__note') || {}).textContent || ''");
+  check('an unwatched checklist says the ticks are now the user\'s job',
+    /tick them off yourself/i.test(unwatchedNote), JSON.stringify(unwatchedNote));
+
+  overlay.webContents.send('hr:turn', { type: 'step', taskId, index: 0, status: 'offplan' });
+  await new Promise((r) => setTimeout(r, 300));
+  const offplanNote = await feed("(document.querySelector('.steps__note') || {}).textContent || ''");
+  check('an off-plan checklist says the screen has moved on',
+    /not the screen this checklist is for/i.test(offplanNote), JSON.stringify(offplanNote));
+  await shoot(overlay, '10-watching-stopped');
+
+  overlay.webContents.send('hr:turn', { type: 'step', taskId, index: 0, status: 'active' });
+  await new Promise((r) => setTimeout(r, 300));
+  check('reopening the step clears the warning',
+    await feed("!document.querySelector('.steps__note')"));
+
+  // --- a turn is written to the thread the user has OPEN ------------------
+  //
+  // `_currentThread()` returned the most recently UPDATED thread, and the
+  // renderer's openThread(id) never told main. So opening a week-old thread,
+  // asking a follow-up, and watching it land in the newest one — plus a header
+  // that rewrote itself mid-turn to a conversation you were not looking at.
+  console.log('\nthread routing');
+
+  const older = store.createThread();
+  store.appendTurn(older.id, { prompt: 'Older conversation about printers', kind: 'answer', markdown: 'x', at: Date.now() });
+  const newer = store.createThread();
+  store.appendTurn(newer.id, { prompt: 'Newer conversation about wifi', kind: 'answer', markdown: 'y', at: Date.now() });
+  store.getThread(older.id).updatedAt = 1000;
+  store.getThread(newer.id).updatedAt = 2000;
+
+  llm.respond = async () => ({ kind: 'answer', markdown: 'Answered where you were reading.' });
+
+  await feed("document.getElementById('toggle-threads').click()");
+  await new Promise((r) => setTimeout(r, 350));
+  const opened = await feed(`(() => {
+    const row = [...document.querySelectorAll('.thread')]
+      .find((r) => r.textContent.includes('Older conversation about printers'));
+    if (!row) return false;
+    row.click();
+    return true;
+  })()`);
+  check('the older thread could be opened', opened === true);
+  await new Promise((r) => setTimeout(r, 400));
+
+  await submit('and what about this one?');
+
+  const olderPrompts = store.getThread(older.id).turns.map((t) => t.prompt);
+  const newerPrompts = store.getThread(newer.id).turns.map((t) => t.prompt);
+  check('a follow-up lands in the thread that is open',
+    olderPrompts.includes('and what about this one?'), JSON.stringify(olderPrompts));
+  check('and not in the most recently updated one',
+    !newerPrompts.includes('and what about this one?'), JSON.stringify(newerPrompts));
+
+  // --- the key hint may not leak the key ----------------------------------
+  //
+  // head and tail slices overlap below 13 characters, so a short value came
+  // back almost whole: `Unknown · short••••hort`.
+  const realKey = store._key;
+  store._key = 'short';
+  const shortHint = store.keyHint();
+  store._key = realKey;
+  check('a short key is not leaked by its own hint',
+    !shortHint.includes('short'), JSON.stringify(shortHint));
 
   // --- result ------------------------------------------------------------
   console.log(`\nscreenshots: ${OUT}`);

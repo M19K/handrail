@@ -66,6 +66,10 @@ function main() {
       excludeFromCapture: () => windows.excludeFromCapture(),
     });
 
+    // The arrow's 45s dwell timer hides it without anyone asking. Tell the
+    // overlay, or its "Pointing at it on your screen" badge outlives the arrow.
+    windows.onArrowExpired = () => turns.emit({ type: 'point', rect: null });
+
     ipc.register({
       store,
       windows,
@@ -152,9 +156,17 @@ function main() {
     console.log(`[main] tray created from ${found}`);
   }
 
+  /**
+   * The overlay is created once and never destroyed, so `did-finish-load` fires
+   * exactly once — on creation. Attaching a listener on every call (tray "Show
+   * Handrail", onSetupComplete, activate) added one that could never fire, and
+   * eleven of them produced a MaxListenersExceededWarning.
+   */
   function launchOverlay() {
-    if (!windows.overlay) windows.createOverlay();
-    windows.overlay.webContents.once('did-finish-load', () => windows.showOverlay());
+    if (!windows.overlay) {
+      windows.createOverlay();
+      windows.overlay.webContents.once('did-finish-load', () => windows.showOverlay());
+    }
     if (!windows.overlay.webContents.isLoading()) windows.showOverlay();
   }
 

@@ -139,7 +139,13 @@ function build() {
   // real preload is present, and shipping the same bytes that were tested is
   // worth more than saving six kilobytes.
   copyDir(path.join(ROOT, 'src'), path.join(APP, 'src'), (_p, e) => e.name.endsWith('.test.js'));
-  copyDir(path.join(ROOT, 'renderer'), path.join(APP, 'renderer'), (_p, e) => e.name === 'dev.js');
+  // dev.js is the standalone harness. mock-bridge.js is worse than useless in a
+  // shipped build: it installs a fake `window.handrail` whenever the real one is
+  // missing, so a preload that failed to load would present a fully
+  // working-looking overlay with invented threads and a canned answer, and the
+  // user would have no way to tell. Absent, the overlay fails visibly instead.
+  copyDir(path.join(ROOT, 'renderer'), path.join(APP, 'renderer'),
+    (_p, e) => e.name === 'dev.js' || e.name === 'mock-bridge.js');
   copyDir(path.join(ROOT, 'design', 'brand'), path.join(APP, 'design', 'brand'));
   fs.mkdirSync(path.join(APP, 'design'), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'design', 'tokens.css'), path.join(APP, 'design', 'tokens.css'));

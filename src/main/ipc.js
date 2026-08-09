@@ -53,7 +53,7 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     // to take effect reads as broken.
     if (patch && 'stealth' in patch) windows.applyStealth(next.stealth);
     if (patch && patch.watching === false) turns.stopWatching();
-    if (patch && patch.pointing === false) windows.showArrow(null);
+    if (patch && patch.pointing === false) turns.clearArrow();
     return next;
   });
 
@@ -155,7 +155,11 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     // Dismissing the indicator dismisses only the indicator. The checklist and
     // the watching loop are what the user is actually doing; tearing those down
     // because they closed a label would be a surprising amount of collateral.
-    windows.showArrow(null);
+    //
+    // Via turns, not windows.showArrow, so the overlay's "Pointing at it on
+    // your screen" badge is told too — it used to keep claiming an arrow the
+    // user had just closed.
+    turns.clearArrow();
   });
 
   // --- setup --------------------------------------------------------------

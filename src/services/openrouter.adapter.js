@@ -183,7 +183,7 @@ class OpenRouterModels {
     this.apiKey = apiKey;
   }
 
-  async generateContent({ model, contents, config: genConfig, systemInstruction }) {
+  async generateContent({ model, contents, config: genConfig, systemInstruction, signal }) {
     const body = geminiToOpenAI(
       { contents, generationConfig: genConfig, systemInstruction },
       model,
@@ -194,13 +194,17 @@ class OpenRouterModels {
       method: 'POST',
       headers: headers(this.apiKey),
       body: JSON.stringify(body),
+      // Passed through so Escape actually aborts the request on the wire. A
+      // cancelled 3000-token vision call used to keep running and stay billed;
+      // only the reply was thrown away.
+      signal,
     });
 
     if (!res.ok) await raiseHttpError(res);
     return toGeminiResponse(await res.json());
   }
 
-  async generateContentStream({ model, contents, config: genConfig, systemInstruction }) {
+  async generateContentStream({ model, contents, config: genConfig, systemInstruction, signal }) {
     const body = geminiToOpenAI(
       { contents, generationConfig: genConfig, systemInstruction },
       model,
@@ -211,6 +215,10 @@ class OpenRouterModels {
       method: 'POST',
       headers: headers(this.apiKey),
       body: JSON.stringify(body),
+      // Passed through so Escape actually aborts the request on the wire. A
+      // cancelled 3000-token vision call used to keep running and stay billed;
+      // only the reply was thrown away.
+      signal,
     });
 
     if (!res.ok) await raiseHttpError(res);

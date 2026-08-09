@@ -49,6 +49,11 @@ class Windows {
     this.overlay = null;
     this.arrow = null;
     this.onboarding = null;
+    // Called when the arrow goes away on its own — i.e. the dwell timer. The
+    // overlay's "Pointing at it on your screen" badge is driven by an event
+    // from main, so an arrow that removes itself silently leaves the badge
+    // claiming something that is no longer on screen.
+    this.onArrowExpired = null;
   }
 
   // --- overlay ------------------------------------------------------------
@@ -187,6 +192,13 @@ class Windows {
    * When stealth is on — the default — the windows are already excluded, so
    * this is a no-op and costs nothing.
    *
+   * Refcounted, because captures overlap: a watch tick and a `_pointAtTarget`
+   * can be in flight at the same moment. Each used to restore independently, so
+   * whichever finished first dropped protection while the other was still
+   * capturing — and Handrail appeared in the very frame it was meant to be
+   * absent from. Restore is idempotent so a double call cannot drive the count
+   * negative.
+   *
    * Returns a function that restores the user's actual setting.
    */
   excludeFromCapture() {
@@ -195,9 +207,15 @@ class Windows {
     }
 
     const wins = [this.overlay, this.arrow].filter((w) => w && !w.isDestroyed());
+    this._excludeDepth = (this._excludeDepth || 0) + 1;
     for (const win of wins) win.setContentProtection(true);
 
+    let restored = false;
     return () => {
+      if (restored) return;
+      restored = true;
+      this._excludeDepth -= 1;
+      if (this._excludeDepth > 0) return;   // someone else is still capturing
       for (const win of wins) {
         if (!win.isDestroyed()) win.setContentProtection(false);
       }
@@ -286,6 +304,7 @@ class Windows {
     // step's own controls in the overlay remain the explicit way to stop it.
     this._arrowTimer = setTimeout(() => {
       if (this.arrow && !this.arrow.isDestroyed()) this.arrow.hide();
+      if (this.onArrowExpired) this.onArrowExpired();
     }, ARROW_DWELL_MS);
   }
 
