@@ -19,15 +19,18 @@ Last updated: 2026-08-09
 - shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
 - rebuild + reinstall: `node scripts/package-win.js --install`
 
-24 commits, pushed. `7909792` is pristine upstream and is the first commit on
+29 commits, pushed. `7909792` is pristine upstream and is the first commit on
 GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
 +13,146 / −21,781** — it removes more than it adds, which is the point.
 
 - repo: **https://github.com/M19K/handrail** — public, no fork relationship
-- release: **v0.1.0 is a DRAFT**, not published. Four assets built by CI:
-  `Handrail-Setup-0.1.0.exe`, `Handrail.0.1.0.exe` (portable),
-  `Handrail-0.1.0.dmg` (x64), `Handrail-0.1.0-arm64.dmg`
-- publishing it is a deliberate human step — check the notes, then press it
+- version: **0.1.1**, in `VERSION`, `package.json` and `CHANGELOG.md`
+- PR [#1](https://github.com/M19K/handrail/pull/1) — merged, the first on the repo
+- releases: **v0.1.0 and v0.1.1 are both DRAFTS**, neither published. Four assets
+  each: Windows setup + portable `.exe`, macOS x64 + arm64 `.dmg`
+- **v0.1.1 supersedes v0.1.0 entirely.** Publishing v0.1.1 and deleting the
+  v0.1.0 draft is the tidy end state, but that is a human call
+- publishing is a deliberate human step — read the notes, then press it
 
 ### ⚠ The stored API key on this machine is unreadable
 
@@ -55,16 +58,22 @@ nothing was lost that was not already lost.
   directly, including a hand-written `.ico` encoder.
 - **Speech deleted.** No Whisper, no Azure, no `node-record-lpcm16`.
 
-### Verification
+### Verification — three layers, all green
 
 - `npm test` — **80 unit tests** (geometry, turn state machine, capture source
   selection, store recovery, response shapes, key-format detection). Node's
-  built-in runner, no framework, no Electron.
+  built-in runner, no framework, no Electron. **This is what gates CI, so it
+  must never need a display or a binary.**
 - `npx electron scripts/smoke.js` — **63 checks** against the real main process
   and real preload, writing screenshots to `%TEMP%\handrail-smoke`.
-- The smoke test runs against a throwaway userData directory. It used to write
-  to the real one, which mutated the installed app and made results depend on
-  the previous run.
+- `npm run qa` — **29 Playwright `_electron` tests** that launch the real app
+  (`tests/qa/`), covering what smoke structurally cannot: boot, window
+  lifecycle, the single-instance lock, position persistence, onboarding, and
+  what a person sees when the model call fails. Screenshots to
+  `%TEMP%\handrail-qa`.
+- Both smoke and QA run against throwaway userData directories. Smoke used to
+  write to the real one, which mutated the installed app and made results depend
+  on the previous run.
 
 ### Review status (2026-08-09)
 
@@ -351,9 +360,9 @@ and the design order was: identity → design system → `/design-shotgun` →
 | `brandkit` | **skipped** | Direction was locked in `DECISIONS.md` instead. |
 | `/design-html` | **substituted** | Renderer written directly. |
 | `impeccable`, `emil-design-eng`, animation trio | **skipped** | No polish pass has been run. |
-| `/qa` | **not run** | Playwright `_electron` path untested. `scripts/smoke.js` covers some of the same ground but is bespoke. |
+| `/qa` | **done** | 2026-08-09. Playwright `_electron`, 29 tests, 2 bugs found and fixed — `.gstack/qa-reports/qa-report-handrail-2026-08-09.md`. |
 | `/review` | **done** | 2026-08-09. 27 findings, all 27 fixed — `docs/REVIEW-2026-08-09.md`. |
-| `/ship` | **not run** | No VERSION bump, no CHANGELOG, no PR. |
+| `/ship` | **done** | 2026-08-09. VERSION, CHANGELOG, PR #1 merged, v0.1.1 tagged and built. |
 
 ### The honest summary
 
@@ -372,7 +381,7 @@ lag, the turn-id race, the undecryptable key). But it means:
 ### What to do about it, in order
 
 1. ~~**`/review`**~~ — done 2026-08-09, then all 27 findings fixed.
-2. **`/qa`** — a real Playwright `_electron` pass, to cover what `smoke.js` does
-   not.
-3. **`impeccable` + `emil-design-eng`** — the polish pass, once behaviour settles.
-4. **`/ship`** — the remote exists now, so this is unblocked.
+2. ~~**`/qa`**~~ — done 2026-08-09. 29 `_electron` tests, 2 bugs fixed.
+3. ~~**`/ship`**~~ — done 2026-08-09. v0.1.1 tagged, built, waiting as a draft.
+4. **`impeccable` + `emil-design-eng`** — the polish pass. The only stage of the
+   original plan that has still never been run.
