@@ -1,0 +1,1143 @@
+<title>Handrail — three visual directions</title>
+
+<style>
+  /* ---------------------------------------------------------------
+     BOARD TOKENS
+     The board chrome is deliberately desaturated so the three
+     candidate accents are the only saturated colour on the page.
+     Neutrals carry a slight blue bias — picked, not inherited.
+     --------------------------------------------------------------- */
+  :root {
+    --ground:      #F4F5F7;
+    --ground-2:    #FFFFFF;
+    --ink:         #14181D;
+    --ink-2:       #454E58;
+    --ink-3:       #79828E;
+    --rule:        #DDE1E6;
+    --rule-strong: #C3C9D1;
+
+    --shell-max: 1180px;
+
+    --s1: 4px;  --s2: 8px;   --s3: 12px; --s4: 16px;
+    --s5: 24px; --s6: 32px;  --s7: 48px; --s8: 72px; --s9: 104px;
+
+    --sans: ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI",
+            system-ui, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+
+    /* Candidate signature colours — the actual subject of this page. */
+    --dir-a: #2FD9A8;
+    --dir-b: #6B4DE6;
+    --dir-c: #FF7A45;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:      #101317;
+      --ground-2:    #171B21;
+      --ink:         #EDF0F3;
+      --ink-2:       #A8B1BC;
+      --ink-3:       #6F7883;
+      --rule:        #262C34;
+      --rule-strong: #363E48;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #101317;
+    --ground-2:    #171B21;
+    --ink:         #EDF0F3;
+    --ink-2:       #A8B1BC;
+    --ink-3:       #6F7883;
+    --rule:        #262C34;
+    --rule-strong: #363E48;
+  }
+  :root[data-theme="light"] {
+    --ground:      #F4F5F7;
+    --ground-2:    #FFFFFF;
+    --ink:         #14181D;
+    --ink-2:       #454E58;
+    --ink-3:       #79828E;
+    --rule:        #DDE1E6;
+    --rule-strong: #C3C9D1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: 0 var(--s5);
+  }
+
+  /* ---------------------------------------------------------------
+     MASTHEAD
+     --------------------------------------------------------------- */
+  .masthead { padding: var(--s8) 0 var(--s7); border-bottom: 1px solid var(--rule); }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--s4);
+  }
+
+  h1 {
+    margin: 0 0 var(--s4);
+    font-size: clamp(30px, 4.2vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    font-weight: 660;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    margin: 0; max-width: 62ch;
+    font-size: 17px; color: var(--ink-2);
+  }
+
+  .constraints {
+    margin-top: var(--s6);
+    display: grid; gap: var(--s3);
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  }
+  .constraint {
+    border: 1px solid var(--rule); border-radius: 3px;
+    background: var(--ground-2); padding: var(--s3) var(--s4);
+  }
+  .constraint b {
+    display: block; font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-3);
+    font-weight: 600; margin-bottom: var(--s1);
+  }
+  .constraint span { font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+
+  /* ---------------------------------------------------------------
+     DIRECTION SECTIONS
+     --------------------------------------------------------------- */
+  .direction { padding: var(--s8) 0; border-bottom: 1px solid var(--rule); }
+
+  .dir-head {
+    display: grid; gap: var(--s5) var(--s7);
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    align-items: start;
+    margin-bottom: var(--s6);
+  }
+  @media (max-width: 860px) { .dir-head { grid-template-columns: 1fr; } }
+
+  .dir-label {
+    display: flex; align-items: center; gap: var(--s3);
+    margin-bottom: var(--s3);
+  }
+  .dir-dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  .dir-index {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+    letter-spacing: 0.06em;
+  }
+
+  .direction h2 {
+    margin: 0 0 var(--s3);
+    font-size: clamp(24px, 3vw, 33px);
+    letter-spacing: -0.02em; font-weight: 640; line-height: 1.12;
+  }
+  .thesis { margin: 0; font-size: 16px; color: var(--ink-2); max-width: 54ch; }
+
+  /* Spec panel */
+  .spec {
+    border: 1px solid var(--rule); border-radius: 3px;
+    background: var(--ground-2); overflow: hidden;
+  }
+  .spec-row {
+    display: grid; grid-template-columns: 92px 1fr;
+    gap: var(--s3); padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--rule);
+    font-size: 13.5px; align-items: baseline;
+  }
+  .spec-row:last-child { border-bottom: 0; }
+  .spec-row dt {
+    font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600;
+  }
+  .spec-row dd { margin: 0; color: var(--ink-2); }
+  .spec-row dd code { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+  .swatches { display: flex; gap: var(--s2); flex-wrap: wrap; }
+  .swatch {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+  }
+  .swatch i {
+    width: 15px; height: 15px; border-radius: 2px;
+    border: 1px solid rgba(128,128,128,0.35); display: block;
+  }
+
+  /* ---------------------------------------------------------------
+     SCENES — simulated host applications.
+     Fixed palette on purpose: these stand in for screenshots, so they
+     must not shift with the viewer's theme or the comparison breaks.
+     --------------------------------------------------------------- */
+  .scene-label {
+    display: flex; align-items: baseline; gap: var(--s3);
+    margin: var(--s6) 0 var(--s3);
+    font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600;
+  }
+  .scene-label em {
+    font-style: normal; letter-spacing: 0; text-transform: none;
+    font-size: 13px; color: var(--ink-2); font-weight: 400;
+  }
+
+  .scene {
+    position: relative; border-radius: 5px; overflow: hidden;
+    border: 1px solid var(--rule-strong);
+    aspect-ratio: 16 / 9; min-height: 300px;
+    font-family: var(--sans);
+  }
+
+  /* --- dark host: NLE / compositor --- */
+  .host-dark { background: #16181C; }
+  .host-dark .h-chrome {
+    height: 30px; background: #1E2126; border-bottom: 1px solid #0D0F12;
+    display: flex; align-items: center; padding: 0 10px; gap: 16px;
+  }
+  .host-dark .h-menu { font-size: 10.5px; color: #7E8791; }
+  .host-dark .h-body { display: flex; height: calc(100% - 30px); }
+  .host-dark .h-rail { width: 34px; background: #1A1D22; border-right: 1px solid #0D0F12;
+    display: flex; flex-direction: column; align-items: center; gap: 7px; padding-top: 10px; }
+  .host-dark .h-tool { width: 19px; height: 19px; border-radius: 3px; background: #2B3038; }
+  .host-dark .h-tool.on { background: #3A424E; }
+  .host-dark .h-main { flex: 1; display: flex; flex-direction: column; }
+  .host-dark .h-monitor { flex: 1; background: #0B0C0E; margin: 9px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center; }
+  .host-dark .h-monitor div { width: 62%; height: 66%; border-radius: 2px;
+    background: linear-gradient(148deg, #2C3340, #171A20 65%); }
+  .host-dark .h-timeline { height: 38%; background: #1A1D22; border-top: 1px solid #0D0F12; padding: 8px 9px; }
+  .host-dark .h-track { height: 17px; border-radius: 2px; margin-bottom: 5px; display: flex; gap: 2px; }
+  .host-dark .h-clip { border-radius: 2px; height: 100%; }
+  .host-dark .h-panel { width: 132px; background: #1A1D22; border-left: 1px solid #0D0F12; padding: 9px; }
+  .host-dark .h-field { height: 15px; background: #23272E; border-radius: 2px; margin-bottom: 6px; }
+
+  /* --- light host: spreadsheet --- */
+  .host-light { background: #FFFFFF; }
+  .host-light .h-ribbon { height: 44px; background: #F3F2F1; border-bottom: 1px solid #E1DFDD;
+    display: flex; align-items: center; gap: 14px; padding: 0 12px; }
+  .host-light .h-rgroup { display: flex; gap: 5px; }
+  .host-light .h-rbtn { width: 21px; height: 21px; border-radius: 3px; background: #E3E1DF; }
+  .host-light .h-grid { height: calc(100% - 44px); display: grid;
+    grid-template-columns: 30px repeat(9, 1fr); grid-auto-rows: 25px; }
+  .host-light .h-cell { border-right: 1px solid #E8E6E4; border-bottom: 1px solid #E8E6E4; }
+  .host-light .h-cell.hdr { background: #F3F2F1; }
+
+  /* ---------------------------------------------------------------
+     THE ARROW MARKER — same mechanism the spike proved.
+     --------------------------------------------------------------- */
+  .marker { position: absolute; pointer-events: none; }
+  .ring { position: absolute; border-radius: 6px; }
+  .ring::before {
+    content: ""; position: absolute; inset: -3px; border-radius: 8px;
+    border: 5px solid rgba(0,0,0,0.5);
+  }
+  .ring::after {
+    content: ""; position: absolute; inset: -3px; border-radius: 8px;
+    border: 2px solid var(--sig);
+  }
+  .arrow-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .arrow-svg .sh { fill: none; stroke: rgba(0,0,0,0.5); stroke-width: 7; stroke-linecap: round; }
+  .arrow-svg .ln { fill: none; stroke: var(--sig);     stroke-width: 2.6; stroke-linecap: round; }
+
+  /* ---------------------------------------------------------------
+     DIRECTION A — "Calm Instrument"
+     --------------------------------------------------------------- */
+  .a-bar {
+    position: absolute; display: flex; align-items: center; gap: 10px;
+    background: rgba(19,21,25,0.90);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 9px; padding: 7px 9px 7px 11px;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.5);
+    backdrop-filter: blur(18px);
+  }
+  .a-grip { display: flex; flex-direction: column; gap: 2.5px; padding-right: 2px; }
+  .a-grip i { display: flex; gap: 2.5px; }
+  .a-grip b { width: 2px; height: 2px; border-radius: 50%; background: rgba(255,255,255,0.30); }
+  .a-input { font-size: 12.5px; color: rgba(255,255,255,0.44); white-space: nowrap; }
+  .a-caret { display: inline-block; width: 1px; height: 12px; background: var(--dir-a);
+    vertical-align: -2px; margin-left: 1px; }
+  .a-chip {
+    font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--dir-a); border: 1px solid rgba(47,217,168,0.34);
+    border-radius: 3px; padding: 2.5px 5px; font-weight: 600;
+  }
+  .a-key {
+    font-family: var(--mono); font-size: 9.5px; color: rgba(255,255,255,0.34);
+    border: 1px solid rgba(255,255,255,0.13); border-radius: 3px; padding: 2px 4px;
+  }
+  .a-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(19,21,25,0.90); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 999px; padding: 6px 12px 6px 9px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  }
+  .a-pip { width: 6px; height: 6px; border-radius: 50%; background: var(--dir-a); flex: none; }
+  .a-pill span { font-size: 11.5px; color: rgba(255,255,255,0.62); }
+
+  .a-answer {
+    background: rgba(19,21,25,0.94); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 9px; box-shadow: 0 16px 44px rgba(0,0,0,0.5);
+    overflow: hidden; width: 100%;
+  }
+  .a-answer-hd {
+    padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .a-answer-hd b { font-size: 11.5px; color: rgba(255,255,255,0.88); font-weight: 550; }
+  .a-answer-bd { padding: 4px 12px 12px; }
+  .a-step { display: flex; gap: 9px; padding: 7px 0; align-items: flex-start; }
+  .a-step + .a-step { border-top: 1px solid rgba(255,255,255,0.05); }
+  .a-num {
+    width: 15px; height: 15px; border-radius: 50%; flex: none; margin-top: 1px;
+    border: 1px solid rgba(255,255,255,0.20); font-size: 8.5px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.5); font-family: var(--mono);
+  }
+  .a-num.done { background: var(--dir-a); border-color: var(--dir-a); color: #08110E; }
+  .a-num.now  { border-color: var(--dir-a); color: var(--dir-a); }
+  .a-step p { margin: 0; font-size: 11.5px; line-height: 1.42; color: rgba(255,255,255,0.62); }
+  .a-step.is-now p { color: rgba(255,255,255,0.93); }
+
+  /* ---------------------------------------------------------------
+     DIRECTION B — "Guide"
+     --------------------------------------------------------------- */
+  .b-card {
+    position: absolute; background: #FDFCFA;
+    border: 1px solid rgba(20,16,40,0.09); border-radius: 17px;
+    box-shadow: 0 2px 5px rgba(20,16,40,0.07), 0 18px 46px rgba(20,16,40,0.30);
+    overflow: hidden;
+  }
+  .b-bar { display: flex; align-items: center; gap: 11px; padding: 12px 13px; }
+  .b-avatar {
+    width: 27px; height: 27px; border-radius: 9px; flex: none;
+    background: linear-gradient(145deg, var(--dir-b), #9C7BF5);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .b-input { font-size: 14.5px; color: #6C6880; white-space: nowrap; }
+  .b-send {
+    width: 27px; height: 27px; border-radius: 9px; flex: none;
+    background: var(--dir-b); display: flex; align-items: center; justify-content: center;
+  }
+  .b-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #FDFCFA; border: 1px solid rgba(20,16,40,0.09);
+    border-radius: 999px; padding: 7px 15px 7px 8px;
+    box-shadow: 0 2px 5px rgba(20,16,40,0.07), 0 12px 30px rgba(20,16,40,0.26);
+  }
+  .b-pill-dot {
+    width: 19px; height: 19px; border-radius: 7px; flex: none;
+    background: linear-gradient(145deg, var(--dir-b), #9C7BF5);
+  }
+  .b-pill span { font-size: 13px; color: #4A465C; font-weight: 500; }
+
+  .b-answer { width: 100%; background: #FDFCFA;
+    border: 1px solid rgba(20,16,40,0.09); border-radius: 17px;
+    box-shadow: 0 2px 5px rgba(20,16,40,0.07), 0 18px 46px rgba(20,16,40,0.22);
+    overflow: hidden; }
+  .b-answer-hd { padding: 13px 15px 11px; display: flex; align-items: center; gap: 9px; }
+  .b-answer-hd b { font-size: 14px; color: #22203A; font-weight: 600; }
+  .b-prog { margin-left: auto; font-size: 11.5px; color: var(--dir-b); font-weight: 600; }
+  .b-answer-bd { padding: 0 15px 14px; }
+  .b-step { display: flex; gap: 11px; padding: 9px 0; align-items: flex-start; }
+  .b-check {
+    width: 19px; height: 19px; border-radius: 7px; flex: none; margin-top: 1px;
+    border: 1.5px solid #D8D4E4; display: flex; align-items: center; justify-content: center;
+  }
+  .b-check.done { background: var(--dir-b); border-color: var(--dir-b); }
+  .b-check.now  { border-color: var(--dir-b); border-width: 2px; }
+  .b-step p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #6C6880; }
+  .b-step.is-now p { color: #22203A; font-weight: 500; }
+
+  /* ---------------------------------------------------------------
+     DIRECTION C — "The Rail"
+     --------------------------------------------------------------- */
+  .c-rail {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 52px;
+    background: rgba(16,14,13,0.93);
+    border-right: 1px solid rgba(255,255,255,0.09);
+    backdrop-filter: blur(16px);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 11px 0; gap: 10px;
+  }
+  .c-mark {
+    width: 26px; height: 26px; border-radius: 7px; flex: none;
+    background: var(--dir-c); display: flex; align-items: center; justify-content: center;
+  }
+  .c-rail-rule { width: 18px; height: 1px; background: rgba(255,255,255,0.12); }
+  .c-rail-btn {
+    width: 26px; height: 26px; border-radius: 7px; flex: none;
+    border: 1px solid rgba(255,255,255,0.11);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .c-rail-step {
+    width: 26px; height: 26px; border-radius: 7px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px;
+    border: 1px solid rgba(255,255,255,0.13); color: rgba(255,255,255,0.42);
+  }
+  .c-rail-step.done { background: rgba(255,122,69,0.16); border-color: rgba(255,122,69,0.45); color: var(--dir-c); }
+  .c-rail-step.now  { background: var(--dir-c); border-color: var(--dir-c); color: #1A0D07; font-weight: 700; }
+
+  .c-drawer {
+    position: absolute; left: 52px; top: 0; bottom: 0; width: 244px;
+    background: rgba(22,19,17,0.95);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+    padding: 13px 14px; display: flex; flex-direction: column; gap: 11px;
+  }
+  .c-task { font-size: 9.5px; letter-spacing: 0.11em; text-transform: uppercase;
+    color: rgba(255,255,255,0.36); font-weight: 600; }
+  .c-title { font-size: 14px; color: #F2EEEB; line-height: 1.32; margin: 0; font-weight: 550; }
+  .c-now {
+    border-left: 2px solid var(--dir-c); padding: 2px 0 2px 10px;
+  }
+  .c-now b { display: block; font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--dir-c); margin-bottom: 3px; font-weight: 600; }
+  .c-now p { margin: 0; font-size: 12.5px; line-height: 1.45; color: rgba(255,255,255,0.80); }
+  .c-next { font-size: 11.5px; line-height: 1.45; color: rgba(255,255,255,0.38); margin: 0; }
+  .c-input {
+    margin-top: auto; border: 1px solid rgba(255,255,255,0.11); border-radius: 7px;
+    padding: 8px 10px; font-size: 11.5px; color: rgba(255,255,255,0.34);
+  }
+
+  /* ---------------------------------------------------------------
+     STATE STRIP — the smaller supporting states under each scene
+     --------------------------------------------------------------- */
+  .states { display: grid; gap: var(--s4); margin-top: var(--s4);
+    grid-template-columns: minmax(0, 250px) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 760px) { .states { grid-template-columns: 1fr; } }
+
+  .state-box {
+    border: 1px solid var(--rule); border-radius: 4px; overflow: hidden;
+    background: var(--ground-2);
+  }
+  .state-cap {
+    padding: 7px 11px; font-size: 10.5px; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-3); font-weight: 600;
+    border-bottom: 1px solid var(--rule);
+  }
+  .state-stage {
+    padding: var(--s5) var(--s4); display: flex; align-items: center; justify-content: center;
+    min-height: 92px;
+  }
+  .stage-dark  { background: #16181C; }
+  .stage-light { background: #FFFFFF; }
+
+  /* Light-host legibility test strip */
+  .legibility {
+    margin-top: var(--s4); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden;
+  }
+  .legibility .state-cap { background: var(--ground-2); }
+  .leg-stage {
+    position: relative; background: #FFFFFF; height: 138px;
+    display: flex; align-items: center; padding-left: var(--s6);
+  }
+
+  /* ---------------------------------------------------------------
+     TRADE-OFF NOTES
+     --------------------------------------------------------------- */
+  .tradeoffs { display: grid; gap: var(--s4); margin-top: var(--s6);
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .to {
+    border: 1px solid var(--rule); border-left-width: 2px; border-radius: 3px;
+    padding: var(--s3) var(--s4); background: var(--ground-2);
+  }
+  .to.good { border-left-color: #3FA37A; }
+  .to.bad  { border-left-color: #C2603F; }
+  .to b { display: block; font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600; margin-bottom: var(--s1); }
+  .to ul { margin: 0; padding-left: 17px; }
+  .to li { font-size: 14px; color: var(--ink-2); margin-bottom: 5px; line-height: 1.45; }
+  .to li:last-child { margin-bottom: 0; }
+
+  /* ---------------------------------------------------------------
+     CLOSING
+     --------------------------------------------------------------- */
+  .closing { padding: var(--s8) 0 var(--s9); }
+  .closing h2 { margin: 0 0 var(--s4); font-size: 27px; letter-spacing: -0.02em; font-weight: 640; }
+  .decide { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .decide-item { border-top: 2px solid var(--rule-strong); padding-top: var(--s3); }
+  .decide-item b { display: block; font-size: 15px; margin-bottom: var(--s1); }
+  .decide-item p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+
+  .callout {
+    margin-top: var(--s6); padding: var(--s4) var(--s5);
+    border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--ground-2);
+  }
+  .callout p { margin: 0 0 var(--s2); font-size: 14.5px; color: var(--ink-2); line-height: 1.55; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout strong { color: var(--ink); font-weight: 600; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="masthead">
+  <div class="shell">
+    <p class="eyebrow">Handrail · Visual direction · 8 August 2026</p>
+    <h1>Three directions for the overlay</h1>
+    <p class="standfirst">
+      Handrail lives on top of somebody else's software. That single fact drives
+      every decision below — it has to be readable over a black timeline and a white
+      spreadsheet, it must never be mistaken for part of the host app, and it has to
+      reassure someone who is already unsure of what they're doing. Pick one.
+    </p>
+
+    <div class="constraints">
+      <div class="constraint">
+        <b>The real decision</b>
+        <span>The signature colour. The arrow is the product, so whatever colour it is becomes the brand.</span>
+      </div>
+      <div class="constraint">
+        <b>Ruled out up front</b>
+        <span>Blue — every host app uses it for selection and focus. Red and amber — they read as errors.</span>
+      </div>
+      <div class="constraint">
+        <b>Tested against</b>
+        <span>A dark editor (Premiere, Unreal, After Effects) and a light spreadsheet (Excel).</span>
+      </div>
+      <div class="constraint">
+        <b>Audience</b>
+        <span>Non-technical. Someone who can follow instructions but can't diagnose why step 4 failed.</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- =====================================================================
+     DIRECTION A
+     ===================================================================== -->
+<section class="direction" style="--sig: var(--dir-a);">
+  <div class="shell">
+    <div class="dir-head">
+      <div>
+        <div class="dir-label">
+          <span class="dir-dot" style="background: var(--dir-a);"></span>
+          <span class="dir-index">Direction A</span>
+        </div>
+        <h2>Calm Instrument</h2>
+        <p class="thesis">
+          A precision tool that stays out of the way. Dark translucent glass, tight
+          type, one cool accent used sparingly. It borrows the restraint of the
+          professional software it sits on, so it reads as equipment rather than as
+          an app that wandered onto the screen.
+        </p>
+      </div>
+
+      <dl class="spec">
+        <div class="spec-row">
+          <dt>Signature</dt>
+          <dd>
+            <div class="swatches">
+              <span class="swatch"><i style="background:#2FD9A8"></i>#2FD9A8</span>
+              <span class="swatch"><i style="background:#131519"></i>#131519</span>
+              <span class="swatch"><i style="background:#EDF0F3"></i>#EDF0F3</span>
+            </div>
+          </dd>
+        </div>
+        <div class="spec-row"><dt>Type</dt><dd>Inter — one family, 11–13px UI, tight tracking</dd></div>
+        <div class="spec-row"><dt>Radius</dt><dd><code>9px</code> bar · <code>999px</code> pill</dd></div>
+        <div class="spec-row"><dt>Surface</dt><dd>90% black + 18px backdrop blur</dd></div>
+        <div class="spec-row"><dt>Reference</dt><dd>Linear, Raycast, Cluely</dd></div>
+      </dl>
+    </div>
+
+    <div class="scene-label">Dark host <em>— expanded bar, pointing at a toolbar tool</em></div>
+    <div class="scene host-dark">
+      <div class="h-chrome">
+        <span class="h-menu">File</span><span class="h-menu">Edit</span>
+        <span class="h-menu">Clip</span><span class="h-menu">Sequence</span>
+        <span class="h-menu">Window</span>
+      </div>
+      <div class="h-body">
+        <div class="h-rail">
+          <div class="h-tool"></div><div class="h-tool"></div>
+          <div class="h-tool" id="a-target"></div>
+          <div class="h-tool"></div><div class="h-tool"></div>
+        </div>
+        <div class="h-main">
+          <div class="h-monitor"><div></div></div>
+          <div class="h-timeline">
+            <div class="h-track">
+              <div class="h-clip" style="flex:3;background:#3C5A78"></div>
+              <div class="h-clip" style="flex:2;background:#46688A"></div>
+              <div class="h-clip" style="flex:4;background:#3C5A78"></div>
+            </div>
+            <div class="h-track">
+              <div class="h-clip" style="flex:5;background:#4A6B4C"></div>
+              <div class="h-clip" style="flex:4;background:#3E5A40"></div>
+            </div>
+            <div class="h-track">
+              <div class="h-clip" style="flex:2;background:#6B5540"></div>
+              <div class="h-clip" style="flex:7;background:#5A4838"></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-panel">
+          <div class="h-field"></div><div class="h-field"></div>
+          <div class="h-field"></div><div class="h-field" style="width:65%"></div>
+        </div>
+      </div>
+
+      <!-- marker on the third tool in the left rail -->
+      <div class="marker" style="left:0;top:0;right:0;bottom:0;">
+        <div class="ring" style="left:6.6%;top:22.5%;width:3.4%;height:6.4%;"></div>
+        <svg class="arrow-svg" viewBox="0 0 800 450" preserveAspectRatio="none">
+          <path class="sh" d="M 210 152 Q 150 128 96 122"/>
+          <path class="ln" d="M 210 152 Q 150 128 96 122"/>
+          <path class="sh" d="M 118 108 L 96 122 L 116 137"/>
+          <path class="ln" d="M 118 108 L 96 122 L 116 137"/>
+        </svg>
+      </div>
+
+      <div class="a-bar" style="left:26%;top:29%;">
+        <div class="a-grip"><i><b></b><b></b></i><i><b></b><b></b></i><i><b></b><b></b></i></div>
+        <span class="a-chip">Step 2 of 5</span>
+        <span class="a-input">Select the Razor tool<span class="a-caret"></span></span>
+        <span class="a-key">⏎</span>
+      </div>
+    </div>
+
+    <div class="states">
+      <div class="state-box">
+        <div class="state-cap">Collapsed</div>
+        <div class="state-stage stage-dark">
+          <span class="a-pill"><i class="a-pip"></i><span>Handrail</span></span>
+        </div>
+      </div>
+      <div class="state-box">
+        <div class="state-cap">Expanded answer — multi-step task</div>
+        <div class="state-stage stage-dark" style="padding: var(--s4);">
+          <div class="a-answer">
+            <div class="a-answer-hd">
+              <b>Add a cross dissolve between two clips</b>
+              <span class="a-chip">2 / 5</span>
+            </div>
+            <div class="a-answer-bd">
+              <div class="a-step"><span class="a-num done">✓</span><p>Open the Effects panel from the Window menu.</p></div>
+              <div class="a-step is-now"><span class="a-num now">2</span><p>Select the Razor tool in the toolbar on the left.</p></div>
+              <div class="a-step"><span class="a-num">3</span><p>Cut both clips at the point they should overlap.</p></div>
+              <div class="a-step"><span class="a-num">4</span><p>Drag Cross Dissolve onto the join between them.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legibility">
+      <div class="state-cap">Light host — legibility test</div>
+      <div class="leg-stage">
+        <div style="position:absolute;inset:0;">
+          <div class="host-light" style="height:100%;">
+            <div class="h-ribbon">
+              <div class="h-rgroup"><div class="h-rbtn"></div><div class="h-rbtn"></div><div class="h-rbtn"></div></div>
+              <div class="h-rgroup"><div class="h-rbtn"></div><div class="h-rbtn"></div></div>
+            </div>
+            <div class="h-grid">
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div>
+            </div>
+          </div>
+        </div>
+        <div class="marker" style="left:0;top:0;right:0;bottom:0;">
+          <div class="ring" style="left:5.2%;top:16%;width:2.6%;height:16%;"></div>
+        </div>
+        <span class="a-pill" style="position:relative;z-index:2;margin-left:18%;">
+          <i class="a-pip"></i><span>Formatting the selected cells…</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="tradeoffs">
+      <div class="to good">
+        <b>What it buys</b>
+        <ul>
+          <li>Disappears into pro software — no visual argument with the host app</li>
+          <li>Mint reads clearly on black and on white, and no major app uses it for chrome</li>
+          <li>Smallest footprint of the three; least screen covered</li>
+        </ul>
+      </div>
+      <div class="to bad">
+        <b>What it costs</b>
+        <ul>
+          <li>Closest to the current crop of AI tools — least distinctive as a portfolio piece</li>
+          <li>Cool and precise is the opposite of reassuring; it may read as another tool to learn</li>
+          <li>Small type is a liability for the stated audience</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     DIRECTION B
+     ===================================================================== -->
+<section class="direction" style="--sig: var(--dir-b);">
+  <div class="shell">
+    <div class="dir-head">
+      <div>
+        <div class="dir-label">
+          <span class="dir-dot" style="background: var(--dir-b);"></span>
+          <span class="dir-index">Direction B</span>
+        </div>
+        <h2>Guide</h2>
+        <p class="thesis">
+          A note from someone who knows how to do this. Light card, generous type,
+          soft corners — deliberately unlike the dark professional software beneath
+          it, so it reads as help arriving rather than as one more panel to
+          understand. Built around the person, not the machine.
+        </p>
+      </div>
+
+      <dl class="spec">
+        <div class="spec-row">
+          <dt>Signature</dt>
+          <dd>
+            <div class="swatches">
+              <span class="swatch"><i style="background:#6B4DE6"></i>#6B4DE6</span>
+              <span class="swatch"><i style="background:#FDFCFA"></i>#FDFCFA</span>
+              <span class="swatch"><i style="background:#22203A"></i>#22203A</span>
+            </div>
+          </dd>
+        </div>
+        <div class="spec-row"><dt>Type</dt><dd>Plus Jakarta Sans — 13–15px UI, generous line height</dd></div>
+        <div class="spec-row"><dt>Radius</dt><dd><code>17px</code> card · <code>7–9px</code> controls</dd></div>
+        <div class="spec-row"><dt>Surface</dt><dd>Opaque warm white, two-layer shadow</dd></div>
+        <div class="spec-row"><dt>Reference</dt><dd>Things 3, Notion, Arc</dd></div>
+      </dl>
+    </div>
+
+    <div class="scene-label">Dark host <em>— the card deliberately contrasts with the app beneath</em></div>
+    <div class="scene host-dark">
+      <div class="h-chrome">
+        <span class="h-menu">File</span><span class="h-menu">Edit</span>
+        <span class="h-menu">Clip</span><span class="h-menu">Sequence</span>
+        <span class="h-menu">Window</span>
+      </div>
+      <div class="h-body">
+        <div class="h-rail">
+          <div class="h-tool"></div><div class="h-tool"></div>
+          <div class="h-tool"></div><div class="h-tool"></div><div class="h-tool"></div>
+        </div>
+        <div class="h-main">
+          <div class="h-monitor"><div></div></div>
+          <div class="h-timeline">
+            <div class="h-track">
+              <div class="h-clip" style="flex:3;background:#3C5A78"></div>
+              <div class="h-clip" style="flex:2;background:#46688A"></div>
+              <div class="h-clip" style="flex:4;background:#3C5A78"></div>
+            </div>
+            <div class="h-track">
+              <div class="h-clip" style="flex:5;background:#4A6B4C"></div>
+              <div class="h-clip" style="flex:4;background:#3E5A40"></div>
+            </div>
+            <div class="h-track">
+              <div class="h-clip" style="flex:2;background:#6B5540"></div>
+              <div class="h-clip" style="flex:7;background:#5A4838"></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-panel">
+          <div class="h-field"></div><div class="h-field"></div>
+          <div class="h-field"></div><div class="h-field" style="width:65%"></div>
+        </div>
+      </div>
+
+      <div class="marker" style="left:0;top:0;right:0;bottom:0;">
+        <div class="ring" style="left:6.6%;top:22.5%;width:3.4%;height:6.4%;"></div>
+        <svg class="arrow-svg" viewBox="0 0 800 450" preserveAspectRatio="none">
+          <path class="sh" d="M 214 158 Q 152 130 96 122"/>
+          <path class="ln" d="M 214 158 Q 152 130 96 122"/>
+          <path class="sh" d="M 118 108 L 96 122 L 116 137"/>
+          <path class="ln" d="M 118 108 L 96 122 L 116 137"/>
+        </svg>
+      </div>
+
+      <div class="b-card" style="left:27%;top:30%;width:46%;">
+        <div class="b-bar">
+          <span class="b-avatar">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 18V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M2 12h20" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="b-input">Select the Razor tool on the left</span>
+          <span class="b-send" style="margin-left:auto;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 12h13M13 6l6 6-6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="states">
+      <div class="state-box">
+        <div class="state-cap">Collapsed</div>
+        <div class="state-stage stage-dark">
+          <span class="b-pill"><i class="b-pill-dot"></i><span>Handrail</span></span>
+        </div>
+      </div>
+      <div class="state-box">
+        <div class="state-cap">Expanded answer — multi-step task</div>
+        <div class="state-stage stage-dark" style="padding: var(--s4);">
+          <div class="b-answer">
+            <div class="b-answer-hd">
+              <span class="b-avatar" style="width:22px;height:22px;border-radius:7px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 18V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+                  <path d="M2 12h20" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <b>Adding a cross dissolve</b>
+              <span class="b-prog">2 of 5</span>
+            </div>
+            <div class="b-answer-bd">
+              <div class="b-step">
+                <span class="b-check done">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+                <p>Open the Effects panel from the Window menu.</p>
+              </div>
+              <div class="b-step is-now"><span class="b-check now"></span><p>Select the Razor tool in the toolbar on the left.</p></div>
+              <div class="b-step"><span class="b-check"></span><p>Cut both clips where they should overlap.</p></div>
+              <div class="b-step"><span class="b-check"></span><p>Drag Cross Dissolve onto the join between them.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legibility">
+      <div class="state-cap">Light host — legibility test</div>
+      <div class="leg-stage">
+        <div style="position:absolute;inset:0;">
+          <div class="host-light" style="height:100%;">
+            <div class="h-ribbon">
+              <div class="h-rgroup"><div class="h-rbtn"></div><div class="h-rbtn"></div><div class="h-rbtn"></div></div>
+              <div class="h-rgroup"><div class="h-rbtn"></div><div class="h-rbtn"></div></div>
+            </div>
+            <div class="h-grid">
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div>
+            </div>
+          </div>
+        </div>
+        <div class="marker" style="left:0;top:0;right:0;bottom:0;">
+          <div class="ring" style="left:5.2%;top:16%;width:2.6%;height:16%;"></div>
+        </div>
+        <span class="b-pill" style="position:relative;z-index:2;margin-left:18%;">
+          <i class="b-pill-dot"></i><span>Formatting the selected cells…</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="tradeoffs">
+      <div class="to good">
+        <b>What it buys</b>
+        <ul>
+          <li>Serves the stated audience directly — warm, legible, unintimidating</li>
+          <li>A light card over dark software is unmistakably not part of the host app</li>
+          <li>Violet is genuinely distinctive; nothing in Premiere, Excel or Unreal competes with it</li>
+        </ul>
+      </div>
+      <div class="to bad">
+        <b>What it costs</b>
+        <ul>
+          <li>Bright card over a dark editor is a real glare problem in a graded suite</li>
+          <li>Larger type and padding mean it covers more of the app you're being taught</li>
+          <li>Risks reading as consumer-friendly to the point of unserious over professional tools</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     DIRECTION C
+     ===================================================================== -->
+<section class="direction" style="--sig: var(--dir-c);">
+  <div class="shell">
+    <div class="dir-head">
+      <div>
+        <div class="dir-label">
+          <span class="dir-dot" style="background: var(--dir-c);"></span>
+          <span class="dir-index">Direction C</span>
+        </div>
+        <h2>The Rail</h2>
+        <p class="thesis">
+          Takes the name literally. Instead of floating in the middle of the screen,
+          Handrail docks to an edge — a rail you follow along. Steps become a visible
+          spine you can see progress down, and the centre of the screen, where the work
+          is, stays clear.
+        </p>
+      </div>
+
+      <dl class="spec">
+        <div class="spec-row">
+          <dt>Signature</dt>
+          <dd>
+            <div class="swatches">
+              <span class="swatch"><i style="background:#FF7A45"></i>#FF7A45</span>
+              <span class="swatch"><i style="background:#161311"></i>#161311</span>
+              <span class="swatch"><i style="background:#F2EEEB"></i>#F2EEEB</span>
+            </div>
+          </dd>
+        </div>
+        <div class="spec-row"><dt>Type</dt><dd>Inter + mono for step indices</dd></div>
+        <div class="spec-row"><dt>Radius</dt><dd><code>7px</code> — square-ish, structural</dd></div>
+        <div class="spec-row"><dt>Surface</dt><dd>Warm near-black, edge-docked, blurred</dd></div>
+        <div class="spec-row"><dt>Reference</dt><dd>Xcode navigator, Figma left rail</dd></div>
+      </dl>
+    </div>
+
+    <div class="scene-label">Dark host <em>— rail docked left, drawer open, centre of screen unobstructed</em></div>
+    <div class="scene host-dark">
+      <div class="h-chrome">
+        <span class="h-menu">File</span><span class="h-menu">Edit</span>
+        <span class="h-menu">Clip</span><span class="h-menu">Sequence</span>
+        <span class="h-menu">Window</span>
+      </div>
+      <div class="h-body">
+        <div class="h-rail">
+          <div class="h-tool"></div><div class="h-tool"></div>
+          <div class="h-tool"></div><div class="h-tool"></div><div class="h-tool"></div>
+        </div>
+        <div class="h-main">
+          <div class="h-monitor"><div></div></div>
+          <div class="h-timeline">
+            <div class="h-track">
+              <div class="h-clip" style="flex:3;background:#3C5A78"></div>
+              <div class="h-clip" style="flex:2;background:#46688A"></div>
+              <div class="h-clip" style="flex:4;background:#3C5A78"></div>
+            </div>
+            <div class="h-track">
+              <div class="h-clip" style="flex:5;background:#4A6B4C"></div>
+              <div class="h-clip" style="flex:4;background:#3E5A40"></div>
+            </div>
+            <div class="h-track">
+              <div class="h-clip" style="flex:2;background:#6B5540"></div>
+              <div class="h-clip" style="flex:7;background:#5A4838"></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-panel">
+          <div class="h-field"></div><div class="h-field"></div>
+          <div class="h-field"></div><div class="h-field" style="width:65%"></div>
+        </div>
+      </div>
+
+      <div class="marker" style="left:0;top:0;right:0;bottom:0;">
+        <div class="ring" style="left:52%;top:63%;width:15%;height:5.5%;"></div>
+        <svg class="arrow-svg" viewBox="0 0 800 450" preserveAspectRatio="none">
+          <path class="sh" d="M 350 250 Q 400 258 452 288"/>
+          <path class="ln" d="M 350 250 Q 400 258 452 288"/>
+          <path class="sh" d="M 428 282 L 452 288 L 442 268"/>
+          <path class="ln" d="M 428 282 L 452 288 L 442 268"/>
+        </svg>
+      </div>
+
+      <div class="c-rail">
+        <span class="c-mark">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 19V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10" stroke="#1A0D07" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M2 12.5h20" stroke="#1A0D07" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="c-rail-rule"></span>
+        <span class="c-rail-step done">1</span>
+        <span class="c-rail-step now">2</span>
+        <span class="c-rail-step">3</span>
+        <span class="c-rail-step">4</span>
+        <span class="c-rail-step">5</span>
+        <span class="c-rail-rule" style="margin-top:auto;"></span>
+        <span class="c-rail-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+      </div>
+
+      <div class="c-drawer">
+        <span class="c-task">Task · step 2 of 5</span>
+        <p class="c-title">Add a cross dissolve between two clips</p>
+        <div class="c-now">
+          <b>Do this now</b>
+          <p>Select the Razor tool in the toolbar on the left, then click where the two clips should overlap.</p>
+        </div>
+        <p class="c-next">Next — drag Cross Dissolve onto the join between them.</p>
+        <div class="c-input">Ask about this step…</div>
+      </div>
+    </div>
+
+    <div class="states">
+      <div class="state-box">
+        <div class="state-cap">Collapsed — rail only, drawer closed</div>
+        <div class="state-stage stage-dark" style="padding:0;height:200px;position:relative;">
+          <div class="c-rail" style="position:absolute;">
+            <span class="c-mark">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 19V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10" stroke="#1A0D07" stroke-width="2.4" stroke-linecap="round"/>
+                <path d="M2 12.5h20" stroke="#1A0D07" stroke-width="2.4" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="c-rail-rule"></span>
+            <span class="c-rail-step done">1</span>
+            <span class="c-rail-step now">2</span>
+            <span class="c-rail-step">3</span>
+          </div>
+        </div>
+      </div>
+      <div class="state-box">
+        <div class="state-cap">Quick question — no checklist, drawer collapses to a single answer</div>
+        <div class="state-stage stage-dark" style="padding: var(--s4);">
+          <div style="width:100%;background:rgba(22,19,17,0.95);border:1px solid rgba(255,255,255,0.09);border-radius:7px;padding:13px 15px;">
+            <span class="c-task">Answer</span>
+            <p style="margin:7px 0 0;font-size:12.5px;line-height:1.5;color:rgba(255,255,255,0.80);">
+              That red bar under the timeline means the preview isn't rendered yet.
+              Press Enter and Premiere will render it — playback will be smooth afterwards.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legibility">
+      <div class="state-cap">Light host — legibility test</div>
+      <div class="leg-stage" style="padding-left:0;">
+        <div style="position:absolute;inset:0;">
+          <div class="host-light" style="height:100%;">
+            <div class="h-ribbon" style="padding-left:64px;">
+              <div class="h-rgroup"><div class="h-rbtn"></div><div class="h-rbtn"></div><div class="h-rbtn"></div></div>
+              <div class="h-rgroup"><div class="h-rbtn"></div><div class="h-rbtn"></div></div>
+            </div>
+            <div class="h-grid" style="padding-left:52px;">
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell hdr"></div><div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div>
+              <div class="h-cell hdr"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div><div class="h-cell"></div><div class="h-cell"></div>
+              <div class="h-cell"></div>
+            </div>
+          </div>
+        </div>
+        <div class="marker" style="left:0;top:0;right:0;bottom:0;">
+          <div class="ring" style="left:26%;top:22%;width:9%;height:18%;"></div>
+        </div>
+        <div class="c-rail" style="height:100%;">
+          <span class="c-mark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 19V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10" stroke="#1A0D07" stroke-width="2.4" stroke-linecap="round"/>
+              <path d="M2 12.5h20" stroke="#1A0D07" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="c-rail-rule"></span>
+          <span class="c-rail-step done">1</span>
+          <span class="c-rail-step now">2</span>
+          <span class="c-rail-step">3</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tradeoffs">
+      <div class="to good">
+        <b>What it buys</b>
+        <ul>
+          <li>The only direction derived from the product's own name — strongest identity</li>
+          <li>Keeps the centre of the screen clear, where the work actually happens</li>
+          <li>Progress down a multi-step task is visible at all times without opening anything</li>
+          <li>Orange survives on both grounds and reads as guidance, not as chrome</li>
+        </ul>
+      </div>
+      <div class="to bad">
+        <b>What it costs</b>
+        <ul>
+          <li>Contradicts a locked decision — PRODUCT.md specifies a floating pill, bar and answer panel</li>
+          <li>Permanently occupies a screen edge; competes with the host app's own left rail</li>
+          <li>Orange sits close to warning semantics and needs care to avoid reading as an alert</li>
+          <li>The most work to build of the three</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     CLOSING
+     ===================================================================== -->
+<section class="closing">
+  <div class="shell">
+    <h2>What picking one actually decides</h2>
+
+    <div class="decide">
+      <div class="decide-item">
+        <b>The arrow's colour</b>
+        <p>It's the thing people will see in a screenshot of Handrail, so it's the brand whether or not we treat it as one.</p>
+      </div>
+      <div class="decide-item">
+        <b>Where the overlay lives</b>
+        <p>A and B float and can be dragged anywhere. C docks to an edge and stays there. This is not a detail — it changes the IPC contract and the window model.</p>
+      </div>
+      <div class="decide-item">
+        <b>Who the product sounds like</b>
+        <p>A is equipment. B is a person helping. C is a route you're following. The copy changes with the choice.</p>
+      </div>
+      <div class="decide-item">
+        <b>What onboarding looks like</b>
+        <p>The API-key screen you asked for gets designed in whichever language wins, along with the three states.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p>
+        <strong>My read.</strong> B serves the audience thesis best and A is the safest,
+        but C is the only one that would make somebody stop scrolling — it comes from the
+        product's own name, it solves the occlusion problem the other two have, and no
+        competitor does it.
+      </p>
+      <p>
+        <strong>The catch.</strong> C contradicts the three-state model already locked in
+        PRODUCT.md, so choosing it means reversing that decision deliberately rather than
+        by accident.
+      </p>
+      <p>
+        <strong>A hybrid is available.</strong> C's rail for guided multi-step tasks,
+        A or B's floating bar for quick questions — the product already has two modes, and
+        they could have two shapes. More to build, but it's the honest answer to a hybrid
+        task model.
+      </p>
+    </div>
+  </div>
+</section>

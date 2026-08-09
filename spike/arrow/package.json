@@ -1,0 +1,6 @@
+{
+  "name": "handrail-arrow-spike",
+  "private": true,
+  "description": "Standalone go/no-go spike for on-screen arrow pointing. Not part of the app.",
+  "main": "main.js"
+}

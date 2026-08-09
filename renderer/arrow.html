@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+<title>Handrail pointer</title>
+<link rel="stylesheet" href="../design/tokens.css">
+<style>
+  /* The pane covers a whole display and must paint nothing except the marker.
+     Anything opaque here is a black rectangle over the user's screen. */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    font-family: var(--font-ui);
+  }
+  #stage { position: absolute; inset: 0; }
+
+  /* Ring. Two strokes, always — the dark casing is what carries contrast onto
+     an unknown background. See design/tokens.css § the on-screen arrow. */
+  .ring-casing { fill: none; stroke: var(--arrow-casing); stroke-width: var(--ring-casing-width); }
+  .ring-stroke { fill: none; stroke: var(--ring-stroke);  stroke-width: var(--ring-stroke-width); }
+
+  .ring-pulse {
+    fill: none;
+    stroke: var(--ring-stroke);
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pulse var(--ring-pulse-dur) cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(1);    opacity: 0.55; }
+    70%, 100% { transform: scale(1.13); opacity: 0; }
+  }
+
+  .arrow-casing { fill: none; stroke: var(--arrow-casing); stroke-width: var(--arrow-casing-width); stroke-linecap: round; }
+  .arrow-stroke { fill: none; stroke: var(--arrow-stroke); stroke-width: var(--arrow-stroke-width); stroke-linecap: round; }
+
+  .label {
+    position: absolute;
+    max-width: 300px;
+    padding: 9px 13px;
+    border-radius: var(--panel-radius);
+    background: var(--surface-panel);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-float);
+    animation: fade var(--dur-normal) var(--ease-out) both;
+  }
+  .label p { margin: 0; font-size: var(--text-sm); line-height: 1.4; color: var(--text-primary); }
+  .label span {
+    display: block; margin-top: 4px;
+    font-size: var(--text-micro); font-weight: var(--weight-semi);
+    letter-spacing: var(--tracking-label); text-transform: uppercase;
+    color: var(--accent);
+  }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ring-pulse { animation: none; opacity: 0; }
+    .label { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="arrow.js"></script>
+</body>
+</html>

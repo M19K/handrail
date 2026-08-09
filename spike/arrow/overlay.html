@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Handrail arrow spike</title>
+<style>
+  /* The window is transparent and click-through; anything opaque here would
+     read as a black rectangle over the user's screen on Windows. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    /* Belt and braces — the window is already click-through at the OS level. */
+    pointer-events: none;
+    -webkit-user-select: none;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+
+  #stage { position: absolute; inset: 0; }
+
+  /* Ring around the located control. Two strokes: a dark outer one so the
+     marker survives on a light UI, a bright inner one so it survives on a dark
+     UI. Handrail has to work over Premiere (near-black) and Excel (near-white). */
+  .ring-outer { fill: none; stroke: rgba(0,0,0,0.55); stroke-width: 6; }
+  .ring-inner { fill: none; stroke: #37E1B4; stroke-width: 2.5; }
+
+  .pulse {
+    fill: none;
+    stroke: #37E1B4;
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pulse 1.9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(1);    opacity: 0.55; }
+    70%  { transform: scale(1.14); opacity: 0;    }
+    100% { transform: scale(1.14); opacity: 0;    }
+  }
+
+  .arrow-shadow { fill: none; stroke: rgba(0,0,0,0.55); stroke-width: 8; stroke-linecap: round; }
+  .arrow-line   { fill: none; stroke: #37E1B4;         stroke-width: 3.5; stroke-linecap: round; }
+
+  .label {
+    position: absolute;
+    max-width: 320px;
+    padding: 9px 13px;
+    border-radius: 10px;
+    background: rgba(18, 20, 24, 0.92);
+    color: #F2F4F7;
+    font-size: 13.5px;
+    line-height: 1.35;
+    letter-spacing: 0.1px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.09);
+    /* Fade in rather than appear — an element that pops into existence over
+       someone's screen reads as a glitch. */
+    animation: fade 260ms ease-out both;
+  }
+  .label .meta {
+    display: block;
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: #37E1B4;
+    letter-spacing: 0.3px;
+  }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Dry-run only: prints the display geometry so a screenshot of the run is
+     self-documenting when compared against the console output. */
+  #diag {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(18, 20, 24, 0.9);
+    color: #9AA4B2;
+    font-family: Consolas, "SF Mono", monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    white-space: pre;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script>
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const stage = document.getElementById('stage');
+
+/**
+ * Where should the arrow come from?
+ *
+ * It has to approach from whichever side has room, or the tail runs off the
+ * screen — and it must not cover the control it is pointing at, which is the
+ * whole failure mode of drawing an arrow over a UI.
+ */
+function chooseApproach(rect, w, h) {
+  const space = {
+    left:  rect.left,
+    right: w - (rect.left + rect.width),
+    top:   rect.top,
+    bottom: h - (rect.top + rect.height),
+  };
+  return Object.keys(space).reduce((a, b) => (space[b] > space[a] ? b : a));
+}
+
+const ARROW_LENGTH = 150;   // DIP, tail-to-tip
+const TIP_GAP = 14;         // keep the tip off the control itself
+
+function arrowGeometry(rect, approach) {
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  switch (approach) {
+    case 'left':
+      return { tip: [rect.left - TIP_GAP, cy], tail: [rect.left - TIP_GAP - ARROW_LENGTH, cy], bow: [0, -34] };
+    case 'right':
+      return { tip: [rect.left + rect.width + TIP_GAP, cy], tail: [rect.left + rect.width + TIP_GAP + ARROW_LENGTH, cy], bow: [0, -34] };
+    case 'top':
+      return { tip: [cx, rect.top - TIP_GAP], tail: [cx, rect.top - TIP_GAP - ARROW_LENGTH], bow: [34, 0] };
+    default:
+      return { tip: [cx, rect.top + rect.height + TIP_GAP], tail: [cx, rect.top + rect.height + TIP_GAP + ARROW_LENGTH], bow: [34, 0] };
+  }
+}
+
+function el(name, attrs) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+
+function drawTarget(svg, target, w, h) {
+  const r = target.rect;
+  const radius = 7;
+
+  // Ring — inset slightly so a tight box still reads as surrounding the control.
+  for (const cls of ['ring-outer', 'ring-inner']) {
+    svg.appendChild(el('rect', {
+      class: cls, x: r.left - 3, y: r.top - 3,
+      width: r.width + 6, height: r.height + 6, rx: radius,
+    }));
+  }
+  svg.appendChild(el('rect', {
+    class: 'pulse', x: r.left - 3, y: r.top - 3,
+    width: r.width + 6, height: r.height + 6, rx: radius,
+  }));
+
+  const approach = chooseApproach(r, w, h);
+  const { tip, tail, bow } = arrowGeometry(r, approach);
+
+  // A single quadratic curve. A curved arrow reads as deliberate where a
+  // straight line reads as a UI seam, and the control point is offset
+  // perpendicular to the approach so the bow is always visible.
+  const ctrl = [(tip[0] + tail[0]) / 2 + bow[0], (tip[1] + tail[1]) / 2 + bow[1]];
+  const d = `M ${tail[0]} ${tail[1]} Q ${ctrl[0]} ${ctrl[1]} ${tip[0]} ${tip[1]}`;
+
+  // Head, angled along the incoming tangent (control point -> tip).
+  const ang = Math.atan2(tip[1] - ctrl[1], tip[0] - ctrl[0]);
+  const HEAD = 17;
+  const SPREAD = 0.42;
+  const head =
+    `M ${tip[0] - HEAD * Math.cos(ang - SPREAD)} ${tip[1] - HEAD * Math.sin(ang - SPREAD)} ` +
+    `L ${tip[0]} ${tip[1]} ` +
+    `L ${tip[0] - HEAD * Math.cos(ang + SPREAD)} ${tip[1] - HEAD * Math.sin(ang + SPREAD)}`;
+
+  for (const cls of ['arrow-shadow', 'arrow-line']) {
+    svg.appendChild(el('path', { class: cls, d }));
+    svg.appendChild(el('path', { class: cls, d: head }));
+  }
+
+  return { tail, approach };
+}
+
+function placeLabel(target, tail, approach, instruction, w, h) {
+  const label = document.createElement('div');
+  const conf = target.confidence != null ? ` · ${Math.round(target.confidence * 100)}%` : '';
+  label.className = 'label';
+  label.innerHTML =
+    `<div>${escapeHtml(instruction || target.label || '')}</div>` +
+    `<span class="meta">${escapeHtml(target.label || '')}${conf}</span>`;
+
+  stage.appendChild(label);
+
+  // Measure, then position, so the chip never hangs off the display edge.
+  const box = label.getBoundingClientRect();
+  let x = tail[0];
+  let y = tail[1];
+
+  if (approach === 'left')       { x -= box.width;  y -= box.height / 2; }
+  else if (approach === 'right') {                  y -= box.height / 2; }
+  else if (approach === 'top')   { x -= box.width / 2; y -= box.height + 6; }
+  else                           { x -= box.width / 2; y += 6; }
+
+  label.style.left = Math.max(12, Math.min(w - box.width - 12, x)) + 'px';
+  label.style.top  = Math.max(12, Math.min(h - box.height - 12, y)) + 'px';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+window.spike.onArrow((payload) => {
+  stage.innerHTML = '';
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  const svg = el('svg', { width: w, height: h, viewBox: `0 0 ${w} ${h}` });
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+  stage.appendChild(svg);
+
+  for (const target of payload.targets || []) {
+    const { tail, approach } = drawTarget(svg, target, w, h);
+    placeLabel(target, tail, approach, payload.instruction, w, h);
+  }
+
+  if (payload.mode === 'dry-run') {
+    const d = payload.display;
+    const diag = document.createElement('div');
+    diag.id = 'diag';
+    diag.textContent =
+      `DRY RUN — no model call\n` +
+      `display bounds  ${d.width}x${d.height} at (${d.x},${d.y}) DIP\n` +
+      `window inner    ${w}x${h} CSS px\n` +
+      `devicePixelRatio ${window.devicePixelRatio}\n` +
+      `\n` +
+      `PASS if: window inner == display bounds, and each box sits\n` +
+      `where its label says (10% in from each corner, centre, strip).`;
+    stage.appendChild(diag);
+  }
+
+  if (payload.mode === 'not-found') {
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.style.left = '50%';
+    label.style.top = '40px';
+    label.style.transform = 'translateX(-50%)';
+    label.innerHTML =
+      `<div>Couldn't find that on screen.</div>` +
+      `<span class="meta">${escapeHtml(payload.reason || '')}</span>`;
+    stage.appendChild(label);
+  }
+});
+</script>
+</body>
+</html>

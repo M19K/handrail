@@ -69,6 +69,66 @@ non-technical users — provided it's polished.
 
 ---
 
+## Step completion — how Handrail knows you've done it
+
+**Decided 2026-08-08. Hybrid, but weighted heavily toward watching.**
+
+The governing assumption: **the user will not click "done".** Someone who is
+struggling through Premiere is not going to stop and do bookkeeping for us.
+Manual ticking exists as an escape hatch, not as the mechanism. Handrail holds
+the user's hand — that means it works out where they are by looking.
+
+### Each step carries its own done-condition
+
+The plan-time model call that produces the steps also produces, for each step, a
+short **visual criterion** — what the screen looks like once this step is
+complete ("the Razor tool is highlighted in the toolbar").
+
+This is the load-bearing decision. It turns verification from an open-ended
+"where are we in this process?" into a cheap, targeted yes/no. We never re-derive
+the plan just to check a box.
+
+### When Handrail looks
+
+Never on a timer. Polling is expensive, wasteful and slightly creepy.
+
+1. **Local change gate — free.** Downscaled frames compared locally. If the
+   screen has not materially changed, nothing happens and nothing is spent.
+2. **Quiet debounce — free.** Wait until the screen has been stable for ~1.2s.
+   The user has stopped moving; checking mid-drag would read half an action.
+3. **Targeted check — one small call.** Ask only whether the *current* step's
+   criterion is met. Downscaled capture: a yes/no needs far less resolution than
+   locating a control for an arrow.
+4. **Rate cap.** At most one check every ~4s regardless of activity.
+
+Result: a user reading the screen and not touching anything costs nothing at all.
+
+### What happens on each outcome
+
+| Outcome | Behaviour |
+|---|---|
+| Step complete | Tick it, advance, move the arrow. This is the second demo moment after the arrow — the checklist advancing on its own. |
+| Not yet | Silence. Never nag. |
+| User did something wrong | Say so gently and correct — **this is the most valuable case and the reason the product exists.** |
+| User has gone off-plan entirely | Offer to re-plan from what's on screen now. Never silently rewrite the plan. |
+| Three failed checks in a row | Stop checking, surface the manual tick. Failing quietly beats failing loudly and repeatedly. |
+
+### Guardrails
+
+- **Advancing is always soft.** The user can step back; no state is destroyed by
+  a wrong call.
+- **Manual tick is always present**, just never required.
+- **Watching is visible and switchable** in settings — it costs the user money
+  and sees their screen, so hiding it would be indefensible.
+
+### Cost
+
+Roughly one small vision call per completed step, plus occasional misfires. On
+`google/gemini-2.5-flash` with a downscaled frame this is a fraction of a cent
+per step. The local gate is what keeps it there.
+
+---
+
 ## Visual cues (v1.1, architect for it now)
 
 Drawing arrows/highlights **on the actual screen** at the actual button. This is

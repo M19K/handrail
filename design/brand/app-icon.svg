@@ -1,0 +1,43 @@
+<!--
+  Handrail — application icon, 1024x1024 master.
+
+  Source for every packaged icon: .ico (Windows), .icns (macOS), and the PNG set
+  (Linux). Generating those is a build step, not a design step — see
+  brand/README.md for the command.
+
+  The mark is inset to 56% of the canvas. macOS applies its own squircle mask
+  and expects generous padding; Windows and Linux use the artwork as-is, so the
+  rounded rectangle is baked in here rather than left to the platform.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none"
+     width="1024" height="1024" role="img" aria-label="Handrail">
+  <title>Handrail</title>
+
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0.55" y2="1">
+      <stop offset="0" stop-color="#22262E"/>
+      <stop offset="1" stop-color="#0E1014"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="url(#ground)"/>
+  <rect x="1" y="1" width="1022" height="1022" rx="227"
+        stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- Mark on the 24-unit grid, scaled 24x.
+
+       Centred on the mark's own INK, not on the grid. The artwork does not fill
+       its 24x24 box — including stroke width it spans x 1.7-20.3 and y 5.6-21.3,
+       so its centre sits at (11.0, 13.45), not (12, 12). Centring the grid would
+       push the mark low and left inside the icon, which is exactly the kind of
+       error that is invisible in a design tool and obvious in a dock.
+
+         translate.x = 512 - 11.00 * 24 = 248
+         translate.y = 512 - 13.45 * 24 = 189                                 -->
+  <g transform="translate(248 189) scale(24)">
+    <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20"
+          stroke="#FFFFFF" stroke-opacity="0.42"
+          stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="8" cy="9" r="3.4" fill="#2FD9A8"/>
+  </g>
+</svg>

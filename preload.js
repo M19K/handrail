@@ -1,160 +1,86 @@
-const { contextBridge, ipcRenderer } = require('electron')
+/**
+ * Handrail — preload bridge.
+ *
+ * The complete surface between main and renderer. See docs/IPC.md for the
+ * contract and the reasoning behind its shape.
+ *
+ * This replaces upstream's two overlapping bridges (`electronAPI`, ~90 methods,
+ * and `api`, a second channel allowlist) with one namespaced object and a
+ * single event stream. The old surface was mostly speech and interview
+ * machinery; none of it survives.
+ *
+ * Two things are deliberately absent and must stay absent:
+ *   - the API key, after setup completes. Only a masked hint comes back.
+ *   - screenshot image data. Captures go straight from the capture service to
+ *     the provider, so the renderer has nothing to cache, log or leak.
+ */
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('electronAPI', {
-  // Screenshot and OCR
-  takeScreenshot: () => ipcRenderer.invoke('take-screenshot'),
-  
-  // Speech recognition
-  startSpeechRecognition: () => ipcRenderer.invoke('start-speech-recognition'),
-  stopSpeechRecognition: () => ipcRenderer.invoke('stop-speech-recognition'),
-  sendAudioChunk: (buffer) => ipcRenderer.send('audio-chunk', { buffer }),
-  getSpeechAvailability: () => ipcRenderer.invoke('get-speech-availability'),
-  
-  // Window management
-  showAllWindows: () => ipcRenderer.invoke('show-all-windows'),
-  hideAllWindows: () => ipcRenderer.invoke('hide-all-windows'),
-  enableWindowInteraction: () => ipcRenderer.invoke('enable-window-interaction'),
-  disableWindowInteraction: () => ipcRenderer.invoke('disable-window-interaction'),
-  switchToChat: () => ipcRenderer.invoke('switch-to-chat'),
-  switchToSkills: () => ipcRenderer.invoke('switch-to-skills'),
-  resizeWindow: (width, height) => ipcRenderer.invoke('resize-window', { width, height }),
-  moveWindow: (deltaX, deltaY) => ipcRenderer.invoke('move-window', { deltaX, deltaY }),
-  getWindowStats: () => ipcRenderer.invoke('get-window-stats'),
-  
-  // Session memory
-  getSessionHistory: () => ipcRenderer.invoke('get-session-history'),
-  getLLMSessionHistory: () => ipcRenderer.invoke('get-llm-session-history'),
-  clearSessionMemory: () => ipcRenderer.invoke('clear-session-memory'),
-  formatSessionHistory: () => ipcRenderer.invoke('format-session-history'),
-  sendChatMessage: (text) => ipcRenderer.invoke('send-chat-message', text),
-  getSkillPrompt: (skillName) => ipcRenderer.invoke('get-skill-prompt', skillName),
-  
-  // Gemini LLM configuration
-  setGeminiApiKey: (apiKey) => ipcRenderer.invoke('set-gemini-api-key', apiKey),
-  getGeminiStatus: () => ipcRenderer.invoke('get-gemini-status'),
-  testGeminiConnection: () => ipcRenderer.invoke('test-gemini-connection'),
-  
-  // Settings
-  showSettings: () => ipcRenderer.invoke('show-settings'),
-  hideSettings: () => ipcRenderer.invoke('hide-settings'),
-  getSettings: () => ipcRenderer.invoke('get-settings'),
-  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+const { contextBridge, ipcRenderer } = require('electron');
 
-  // First-run onboarding
-  getFirstRunStatus: () => ipcRenderer.invoke('get-first-run-status'),
-  completeFirstRun: () => ipcRenderer.invoke('complete-first-run'),
-  openExternal: (url) => ipcRenderer.invoke('open-external', url),
-  closeOnboarding: () => ipcRenderer.invoke('close-onboarding'),
-  detectWhisper: () => ipcRenderer.invoke('detect-whisper'),
-  installWhisper: () => ipcRenderer.invoke('install-whisper'),
-  downloadWhisperModel: (modelName) => ipcRenderer.invoke('download-whisper-model', modelName),
-  onInstallProgress: (callback) => {
-    const wrapped = (_event, line) => {
-      try { callback(line); } catch (e) { console.error('onInstallProgress error:', e); }
+/** Every renderer-initiated call goes through here, so failures look the same. */
+const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
+
+contextBridge.exposeInMainWorld('handrail', {
+  // --- a turn -------------------------------------------------------------
+  ask: (payload) => call('hr:ask', payload),
+  cancel: (turnId) => call('hr:cancel', turnId),
+
+  /**
+   * The single event stream. Everything that happens during a turn arrives
+   * here tagged with `type`; the renderer switches on it once.
+   *
+   * Returns an unsubscribe function. The renderer is a long-lived window whose
+   * panels mount and unmount, so leaking listeners here would accumulate over
+   * a session rather than being cleared by navigation.
+   */
+  onTurn: (handler) => {
+    const wrapped = (_event, payload) => {
+      try {
+        handler(payload);
+      } catch (err) {
+        // A renderer bug must not take down the stream for every later event.
+        console.error('onTurn handler threw', err);
+      }
     };
-    ipcRenderer.on('install-progress', wrapped);
-    return () => ipcRenderer.removeListener('install-progress', wrapped);
+    ipcRenderer.on('hr:turn', wrapped);
+    return () => ipcRenderer.removeListener('hr:turn', wrapped);
   },
-  updateAppIcon: (iconKey) => ipcRenderer.invoke('update-app-icon', iconKey),
-  updateActiveSkill: (skill) => ipcRenderer.invoke('update-active-skill', skill),
-  restartAppForStealth: () => ipcRenderer.invoke('restart-app-for-stealth'),
-  closeWindow: () => ipcRenderer.invoke('close-window'),
-  notifyMainWindowReady: () => {
-    try {
-      ipcRenderer.send('main-window-ready');
-    } catch (error) {
-      console.error('Error notifying main window ready:', error);
-    }
-  },
-  quit: () => {
-    try {
-      ipcRenderer.send('quit-app');
-    } catch (error) {
-      console.error('Error in quit:', error);
-    }
-  },
-  
-  // LLM window specific methods
-  expandLlmWindow: (contentMetrics) => ipcRenderer.invoke('expand-llm-window', contentMetrics),
-  resizeLlmWindowForContent: (contentMetrics) => ipcRenderer.invoke('resize-llm-window-for-content', contentMetrics),
 
-  // Clipboard helper for reliable copy actions
-  copyToClipboard: (text) => {
-    try {
-      return ipcRenderer.invoke('copy-to-clipboard', String(text ?? ''));
-    } catch (e) {
-      console.error('copyToClipboard failed:', e);
-      return false;
-    }
-  },
-  
-  // Display management
-  listDisplays: () => ipcRenderer.invoke('list-displays'),
-  captureArea: (options) => ipcRenderer.invoke('capture-area', options),
-  
-  // Event listeners
-  onTranscriptionReceived: (callback) => ipcRenderer.on('transcription-received', callback),
-  onInterimTranscription: (callback) => ipcRenderer.on('interim-transcription', callback),
-  onSpeechStatus: (callback) => ipcRenderer.on('speech-status', callback),
-  onSpeechError: (callback) => ipcRenderer.on('speech-error', callback),
-  onSpeechAvailability: (callback) => ipcRenderer.on('speech-availability', callback),
-  onSessionEvent: (callback) => ipcRenderer.on('session-event', callback),
-  onSessionCleared: (callback) => ipcRenderer.on('session-cleared', callback),
-  onOcrCompleted: (callback) => ipcRenderer.on('ocr-completed', callback),
-  onOcrError: (callback) => ipcRenderer.on('ocr-error', callback),
-  onLlmResponse: (callback) => ipcRenderer.on('llm-response', callback),
-  onLlmError: (callback) => ipcRenderer.on('llm-error', callback),
-  onTranscriptionLlmResponse: (callback) => ipcRenderer.on('transcription-llm-response', callback),
-  onTranscriptionLlmResponseStart: (callback) => ipcRenderer.on('transcription-llm-response-start', callback),
-  onTranscriptionLlmResponseChunk: (callback) => ipcRenderer.on('transcription-llm-response-chunk', callback),
-  onOpenGeminiConfig: (callback) => ipcRenderer.on('open-gemini-config', callback),
-  onDisplayLlmResponse: (callback) => ipcRenderer.on('display-llm-response', callback),
-  onShowLoading: (callback) => ipcRenderer.on('show-loading', callback),
-  onSkillChanged: (callback) => ipcRenderer.on('skill-changed', callback),
-  onInteractionModeChanged: (callback) => ipcRenderer.on('interaction-mode-changed', callback),
-  onRecordingStarted: (callback) => ipcRenderer.on('recording-started', callback),
-  onRecordingStopped: (callback) => ipcRenderer.on('recording-stopped', callback),
-  onCodingLanguageChanged: (callback) => ipcRenderer.on('coding-language-changed', callback),
-  onMainWindowShown: (callback) => ipcRenderer.on('main-window-shown', callback),
-  
-  // Generic receive method
-  receive: (channel, callback) => ipcRenderer.on(channel, callback),
-  
-  // Remove listeners
-  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
-})
+  // --- steps --------------------------------------------------------------
+  // Both directions exist because auto-advance can be wrong either way.
+  completeStep: (taskId, index) => call('hr:step:complete', taskId, index),
+  reopenStep: (taskId, index) => call('hr:step:reopen', taskId, index),
 
-contextBridge.exposeInMainWorld('api', {
-    send: (channel, data) => {
-        let validChannels = [
-            'close-settings',
-            'quit-app',
-            'save-settings',
-            'toggle-recording',
-            'toggle-interaction-mode',
-            'update-skill',
-            'window-loaded'
-        ];
-        if (validChannels.includes(channel)) {
-            ipcRenderer.send(channel, data);
-        } else {
-            console.warn('Invalid IPC channel:', channel);
-        }
-    },
-    receive: (channel, func) => {
-        let validChannels = [
-            'load-settings',
-            'recording-state-changed',
-            'interaction-mode-changed',
-            'skill-updated',
-            'update-skill',
-            'recording-started',
-            'recording-stopped'
-        ];
-        if (validChannels.includes(channel)) {
-            ipcRenderer.on(channel, (event, ...args) => func(...args));
-        }
-    }
+  // --- threads ------------------------------------------------------------
+  threads: {
+    list: () => call('hr:threads:list'),
+    open: (id) => call('hr:threads:open', id),
+    create: () => call('hr:threads:create'),
+    rename: (id, title) => call('hr:threads:rename', id, title),
+    remove: (id) => call('hr:threads:remove', id),
+  },
+
+  // --- settings -----------------------------------------------------------
+  settings: {
+    get: () => call('hr:settings:get'),
+    set: (patch) => call('hr:settings:set', patch),
+  },
+
+  // --- window -------------------------------------------------------------
+  window: {
+    setState: (state) => call('hr:window:state', state),
+    resize: (size) => call('hr:window:resize', size),
+    beginDrag: () => call('hr:window:drag'),
+    close: () => call('hr:window:close'),
+    quit: () => call('hr:window:quit'),
+  },
+
+  // --- setup (onboarding window only) -------------------------------------
+  setup: {
+    validateKey: (key) => call('hr:setup:validate', key),
+    saveKey: (key) => call('hr:setup:save', key),
+    requestScreenAccess: () => call('hr:setup:screen-access'),
+    complete: () => call('hr:setup:complete'),
+    openExternal: (url) => call('hr:setup:open-external', url),
+  },
 });

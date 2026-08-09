@@ -1,159 +1,70 @@
 {
-  "name": "opencluely",
-  "version": "1.0.0",
-  "description": "AI Problem Solving Assistant",
+  "name": "handrail",
+  "version": "0.1.0",
+  "description": "A desktop overlay that sees your screen and walks you through complex software, step by step.",
   "main": "main.js",
   "scripts": {
-    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
-    "start:win": "electron .",
-    "dev": "env -u ELECTRON_RUN_AS_NODE electron . --no-sandbox --disable-gpu",
-    "dev:win": "electron . --no-sandbox --disable-gpu",
-    "test-speech": "node scripts/test-speech.js",
+    "start": "electron .",
+    "dev": "electron . --no-sandbox",
+    "test": "node --test \"spike/**/*.test.js\" \"src/**/*.test.js\"",
+    "spike:arrow": "electron spike/arrow",
+    "dev:renderer": "electron renderer/dev.js",
     "build": "electron-builder",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder --mac --win --linux",
-    "dist": "npm run build",
     "pack": "electron-builder --dir",
-    "clean": "rm -rf dist/",
-    "rebuild": "npm run clean && npm run build",
-    "release": "npm run clean && npm run build:all",
-    "postinstall": "electron-builder install-app-deps"
+    "clean": "rimraf dist"
   },
   "author": {
-    "name": "TechyCSR",
-    "email": "info@techycsr.dev",
-    "url": "https://techycsr.dev"
+    "name": "m19k1"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TechyCSR/OpenCluely"
-  },
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.2.0",
-    "@google/genai": "^2.9.0",
     "dotenv": "^16.3.1",
-    "markdown": "^0.5.0",
-    "marked": "^15.0.12",
-    "microsoft-cognitiveservices-speech-sdk": "^1.40.0",
-    "node-record-lpcm16": "^1.0.1",
-    "prismjs": "^1.30.0",
-    "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^4.7.1"
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "electron": "^29.1.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "rimraf": "^5.0.5"
   },
   "build": {
-    "appId": "com.opencluely.app",
-    "productName": "OpenCluely",
+    "appId": "com.handrail.app",
+    "productName": "Handrail",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
-      "**/*",
-      "!dist/**/*",
-      "!*.md",
-      "!.git/**/*",
-      "!.env*",
-      "!.venv-whisper/**/*",
-      "!.whisper-models/**/*",
-      "!bin/**/*",
-      "!scripts/__pycache__/**/*",
-      "!**/*.pyc",
-      "!eng.traineddata"
-    ],
-    "asarUnpack": [
-      "assests/icons/**/*",
-      "prompts/**/*",
-      "scripts/whisper_worker.py"
+      "main.js",
+      "preload.js",
+      "preload-arrow.js",
+      "renderer/**/*",
+      "design/tokens.css",
+      "design/brand/*.svg",
+      "src/**/*",
+      "!renderer/dev.js",
+      "!renderer/mock-bridge.js",
+      "!spike/**/*",
+      "!**/*.test.js"
     ],
     "mac": {
-      "category": "public.app-category.utilities",
+      "category": "public.app-category.productivity",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        { "target": "dmg", "arch": ["x64", "arm64"] }
       ],
       "darkModeSupport": true,
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "OpenCluely uses the microphone to transcribe your speech locally with Whisper.",
-        "NSCameraUsageDescription": "OpenCluely does not record video; this entitlement is only present for media-capture compatibility.",
-        "NSScreenCaptureUsageDescription": "OpenCluely captures the screen to read on-screen content for AI assistance."
+        "NSScreenCaptureUsageDescription": "Handrail takes a screenshot when you ask it a question, so it can answer about what is on your screen.",
+        "LSUIElement": true
       }
     },
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        }
-      ],
-      "sign": null
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assests/icons/app-icon.png",
-      "category": "Utility"
-    },
-    "deb": {
-      "depends": [
-        "libgtk-3-0",
-        "libnotify4",
-        "libnss3",
-        "libxss1",
-        "libxtst6",
-        "xauth",
-        "libasound2t64",
-        "libgbm1",
-        "python3 (>= 3.10)",
-        "python3-venv",
-        "python3-pip"
-      ],
-      "recommends": [
-        "ffmpeg"
-      ],
-      "fpm": [
-        "--after-install=scripts/post-install-deb.sh"
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
       ]
     },
     "nsis": {
@@ -162,17 +73,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "perMachine": false,
-      "include": "scripts/post-install-nsis.nsh",
-      "deleteAppDataOnUninstall": false,
-      "artifactName": "OpenCluely-Setup-${version}.${ext}"
+      "artifactName": "Handrail-Setup-${version}.${ext}"
     },
     "dmg": {
-      "title": "OpenCluely Interview Assistant",
-      "backgroundColor": "#000000",
-      "window": {
-        "width": 600,
-        "height": 400
-      }
+      "title": "Handrail",
+      "backgroundColor": "#131519"
     }
   }
 }

@@ -1,0 +1,25 @@
+<!--
+  Handrail — horizontal lockup.
+
+  Mark plus name. The gap between them is 11 units on the mark's own 24-unit
+  grid — see brand/README.md, which specifies it as a ratio rather than a pixel
+  value so the lockup survives being scaled.
+
+  The name is set in Inter SemiBold. Text is left live rather than converted to
+  outlines so this file stays editable; the packaged asset should have it
+  converted, since Inter will not be present on every machine that opens it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 148 24" fill="none"
+     width="148" height="24" role="img" aria-label="Handrail">
+  <title>Handrail</title>
+
+  <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20"
+        stroke="currentColor" stroke-opacity="0.42"
+        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="8" cy="9" r="3.4" fill="#2FD9A8"/>
+
+  <text x="33" y="18.5"
+        font-family="Inter, ui-sans-serif, system-ui, sans-serif"
+        font-size="17" font-weight="600" letter-spacing="-0.34"
+        fill="currentColor">Handrail</text>
+</svg>

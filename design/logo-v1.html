@@ -1,0 +1,578 @@
+<title>Handrail — logo marks</title>
+
+<style>
+  :root {
+    --b-ground:#F4F5F7; --b-card:#FFFFFF; --b-ink:#14181D; --b-ink2:#454E58;
+    --b-ink3:#79828E; --b-rule:#DDE1E6; --b-rule2:#C3C9D1;
+    --mint:#2FD9A8; --mint-dim:rgba(47,217,168,.28);
+    --ink-900:#131519;
+    --b-sans: ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --b-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --b-ground:#101317; --b-card:#171B21; --b-ink:#EDF0F3; --b-ink2:#A8B1BC;
+            --b-ink3:#6F7883; --b-rule:#262C34; --b-rule2:#363E48; }
+  }
+  :root[data-theme="dark"] { --b-ground:#101317; --b-card:#171B21; --b-ink:#EDF0F3;
+    --b-ink2:#A8B1BC; --b-ink3:#6F7883; --b-rule:#262C34; --b-rule2:#363E48; }
+  :root[data-theme="light"] { --b-ground:#F4F5F7; --b-card:#FFFFFF; --b-ink:#14181D;
+    --b-ink2:#454E58; --b-ink3:#79828E; --b-rule:#DDE1E6; --b-rule2:#C3C9D1; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--b-ground); color:var(--b-ink);
+         font-family:var(--b-sans); font-size:16px; line-height:1.55;
+         -webkit-font-smoothing:antialiased; }
+  .shell { max-width:1080px; margin:0 auto; padding:0 24px; }
+
+  .masthead { padding:72px 0 40px; border-bottom:1px solid var(--b-rule); }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.13em; text-transform:uppercase;
+             color:var(--b-ink3); margin:0 0 16px; }
+  h1 { margin:0 0 16px; font-size:clamp(30px,4.2vw,44px); line-height:1.08;
+       letter-spacing:-.025em; font-weight:660; text-wrap:balance; }
+  .standfirst { margin:0; max-width:60ch; font-size:17px; color:var(--b-ink2); }
+
+  .criteria { display:grid; gap:12px; margin-top:28px;
+              grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
+  .crit { border:1px solid var(--b-rule); border-radius:3px; background:var(--b-card);
+          padding:11px 14px; }
+  .crit b { display:block; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+            color:var(--b-ink3); font-weight:600; margin-bottom:3px; }
+  .crit span { font-size:13.5px; color:var(--b-ink2); line-height:1.45; }
+
+  /* --- mark sections --- */
+  .mark-block { padding:52px 0; border-bottom:1px solid var(--b-rule); }
+  .mark-head { display:flex; align-items:baseline; gap:14px; margin-bottom:6px; }
+  .mark-id { font-family:var(--b-mono); font-size:12px; color:var(--b-ink3); }
+  .mark-block h2 { margin:0; font-size:26px; letter-spacing:-.02em; font-weight:640; }
+  .mark-note { margin:0 0 28px; max-width:58ch; font-size:15px; color:var(--b-ink2); }
+
+  .row { display:grid; gap:20px; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  @media (max-width:820px){ .row { grid-template-columns:1fr; } }
+
+  .plate { border:1px solid var(--b-rule2); border-radius:5px; overflow:hidden; }
+  .plate-cap { padding:7px 12px; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+               color:var(--b-ink3); font-weight:600; border-bottom:1px solid var(--b-rule);
+               background:var(--b-card); }
+  .plate-body { padding:36px 24px; display:flex; align-items:center; justify-content:center; gap:34px; }
+  .on-dark  { background:var(--ink-900); }
+  .on-light { background:#FFFFFF; }
+
+  /* size ladder */
+  .ladder { display:flex; align-items:flex-end; gap:26px; flex-wrap:wrap; justify-content:center; }
+  .rung { display:flex; flex-direction:column; align-items:center; gap:9px; }
+  .rung small { font-family:var(--b-mono); font-size:10px; color:var(--b-ink3); }
+  .on-dark .rung small { color:rgba(255,255,255,.32); }
+  .on-light .rung small { color:#98A0AA; }
+
+  /* app icon */
+  .appicon { width:88px; height:88px; border-radius:20px; display:flex;
+             align-items:center; justify-content:center;
+             background:linear-gradient(160deg,#20242B,#101216);
+             border:1px solid rgba(255,255,255,.09);
+             box-shadow:0 10px 26px rgba(0,0,0,.4); }
+  .appicon.mint { background:linear-gradient(160deg,#2FD9A8,#12A87C); border-color:rgba(0,0,0,.12); }
+
+  /* pill context */
+  .ctx-pill { display:inline-flex; align-items:center; gap:8px; height:30px;
+    background:rgba(19,21,25,.92); border:1px solid rgba(255,255,255,.10);
+    border-radius:999px; padding:0 13px 0 9px; box-shadow:0 8px 24px rgba(0,0,0,.45); }
+  .ctx-pill span { font-size:11.5px; color:rgba(255,255,255,.62); font-family:var(--b-sans); }
+
+  /* wordmark */
+  .wordmark { display:flex; align-items:center; gap:11px; }
+  .wordmark .wm-text { font-size:23px; font-weight:600; letter-spacing:-.02em; }
+  .on-dark .wm-text { color:rgba(255,255,255,.92); }
+  .on-light .wm-text { color:#14181D; }
+
+  .verdict { display:grid; gap:16px; margin-top:24px;
+             grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
+  .v { border-left:2px solid var(--b-rule2); padding:2px 0 2px 14px; }
+  .v.pro { border-left-color:#3FA37A; }
+  .v.con { border-left-color:#C2603F; }
+  .v b { display:block; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+         color:var(--b-ink3); font-weight:600; margin-bottom:5px; }
+  .v ul { margin:0; padding-left:16px; }
+  .v li { font-size:14px; color:var(--b-ink2); margin-bottom:4px; line-height:1.45; }
+
+  .closing { padding:52px 0 96px; }
+  .closing h2 { margin:0 0 12px; font-size:26px; letter-spacing:-.02em; font-weight:640; }
+  .rec { border-left:2px solid var(--mint); padding:2px 0 2px 16px; }
+  .rec p { margin:0 0 11px; font-size:15px; color:var(--b-ink2); line-height:1.55; }
+  .rec p:last-child { margin-bottom:0; }
+  .rec strong { color:var(--b-ink); font-weight:600; }
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none!important} }
+</style>
+
+<header class="masthead">
+  <div class="shell">
+    <p class="eyebrow">Handrail · Identity · 8 August 2026</p>
+    <h1>Four marks</h1>
+    <p class="standfirst">
+      Handrail's logo has an unusually hard job: it has to work at 16 pixels in a
+      system tray and inside a 30-pixel pill, on top of software it doesn't control.
+      Anything with more than two elements dies at that size. All four below are
+      drawn on the same 24-unit grid with the same stroke weight.
+    </p>
+
+    <div class="criteria">
+      <div class="crit"><b>Must survive</b><span>16px in the tray, and inside the collapsed pill</span></div>
+      <div class="crit"><b>Must work</b><span>On dark and light, in mint and in flat white</span></div>
+      <div class="crit"><b>Must not</b><span>Look like a menu icon, a table, or a wifi symbol</span></div>
+      <div class="crit"><b>Should</b><span>Say something true about the product, not just look nice</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= MARK A ================= -->
+<section class="mark-block">
+  <div class="shell">
+    <div class="mark-head"><span class="mark-id">Mark A</span><h2>Progress Rail</h2></div>
+    <p class="mark-note">
+      A rail with your position on it. The travelled part is solid, the rest is dim,
+      and the dot sits at the boundary. It is the product described in one shape —
+      a path, and where you are along it — and the dot can slide as steps complete.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-label="Mark A">
+                <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(255,255,255,.28)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.4" fill="#2FD9A8"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(255,255,255,.28)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.4" fill="#2FD9A8"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(255,255,255,.28)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.4" fill="#2FD9A8"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.8" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(255,255,255,.30)" stroke-width="2.8" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.6" fill="#2FD9A8"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M15 15h6" stroke="rgba(255,255,255,.28)" stroke-width="2.6" stroke-linecap="round"/>
+              <circle cx="12" cy="15" r="3.4" fill="#2FD9A8"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.8" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(255,255,255,.28)" stroke-width="2.8" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.6" fill="#2FD9A8"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(255,255,255,.28)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.4" fill="#2FD9A8"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:20px;">
+      <div class="plate">
+        <div class="plate-cap">On light · flat monochrome</div>
+        <div class="plate-body on-light">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#14181D" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(20,24,29,.24)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.4" fill="#14181D"/>
+              </svg>
+              <small>48</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#14181D" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(20,24,29,.24)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.4" fill="#14181D"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 15h6" stroke="#14181D" stroke-width="2.8" stroke-linecap="round"/>
+                <path d="M15 15h6" stroke="rgba(20,24,29,.26)" stroke-width="2.8" stroke-linecap="round"/>
+                <circle cx="12" cy="15" r="3.6" fill="#14181D"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plate">
+        <div class="plate-cap">Mint icon variant</div>
+        <div class="plate-body on-light">
+          <div class="appicon mint">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 15h6" stroke="#08110E" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M15 15h6" stroke="rgba(8,17,14,.35)" stroke-width="2.6" stroke-linecap="round"/>
+              <circle cx="12" cy="15" r="3.4" fill="#08110E"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>Says what the product does — a path and your place on it</li>
+        <li>Survives 16px better than anything else here</li>
+        <li>The dot can animate along the rail as steps complete</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Two-tone rail loses its meaning in single-colour contexts</li>
+        <li>Reads slightly as a slider or a progress bar</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MARK B ================= -->
+<section class="mark-block">
+  <div class="shell">
+    <div class="mark-head"><span class="mark-id">Mark B</span><h2>The Turn</h2></div>
+    <p class="mark-note">
+      A single continuous stroke: flat, then rising. The shape of an actual stair
+      handrail, and of getting somewhere. One element, so it never breaks at any size.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-label="Mark B">
+                <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="2.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h6c4.5 0 8-3.5 8-8V6" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>One stroke — indestructible at any size, in any colour</li>
+        <li>Literally the silhouette of a stair rail</li>
+        <li>Reads as ascent without a single arrow cliché</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Close to a generic "trend up" or route icon</li>
+        <li>Least distinctive of the four at a glance</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MARK C ================= -->
+<section class="mark-block">
+  <div class="shell">
+    <div class="mark-head"><span class="mark-id">Mark C</span><h2>The Rail &amp; Posts</h2></div>
+    <p class="mark-note">
+      The most literal reading: a horizontal rail carried on two posts. Architectural,
+      steady, a bit institutional in a good way — this is the mark that says "something
+      solid to hold onto" rather than "software".
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-label="Mark C">
+                <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.36)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.34)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>Unmistakably a handrail — no explanation needed</li>
+        <li>Symmetrical and calm, which suits the product's temperament</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Three strokes. At 16px it starts to look like a table or the Greek letter pi</li>
+        <li>Static — says nothing about progress or guidance</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MARK D ================= -->
+<section class="mark-block">
+  <div class="shell">
+    <div class="mark-head"><span class="mark-id">Mark D</span><h2>Rail &amp; Point</h2></div>
+    <p class="mark-note">
+      The rail, with the product's own arrow resting on it. This is the only mark that
+      contains the feature Handrail is actually built around — the thing that points at
+      the button on your screen.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-label="Mark D">
+                <path d="M3 18h18" stroke="rgba(255,255,255,.30)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h18" stroke="rgba(255,255,255,.30)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h18" stroke="rgba(255,255,255,.30)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h18" stroke="rgba(255,255,255,.32)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 18h18" stroke="rgba(255,255,255,.30)" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="2.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h18" stroke="rgba(255,255,255,.30)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 18h18" stroke="rgba(255,255,255,.30)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M8 12.5l4-5 4 5" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 7.5V14" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>Contains the actual product feature — the arrow that points</li>
+        <li>Rail plus direction: support and guidance in one shape</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>An upward arrow over a line is close to an "upload" glyph</li>
+        <li>Busiest of the four; the arrowhead thickens up at 16px</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="shell">
+    <h2>My recommendation</h2>
+    <div class="rec">
+      <p>
+        <strong>Mark A, the Progress Rail.</strong> It is the only one that describes
+        what the product actually does rather than what it is named after — a path,
+        and your position on it. It also holds up best at 16px, which is where this
+        mark will spend most of its life.
+      </p>
+      <p>
+        <strong>It has a second life as UI.</strong> The same shape is a progress
+        indicator: the dot slides right as steps complete. A logo that doubles as a
+        working component is rare and worth taking.
+      </p>
+      <p>
+        <strong>If you want the safest option, take B.</strong> One stroke, impossible
+        to break, reads as a stair rail. It is less interesting and it will never be a
+        problem.
+      </p>
+      <p>
+        <strong>C is the most literal and the weakest at small sizes.</strong> D is a
+        good idea that fights an existing icon convention — an arrow above a line is
+        already "upload" in most people's heads.
+      </p>
+    </div>
+  </div>
+</section>

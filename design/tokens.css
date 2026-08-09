@@ -1,0 +1,265 @@
+/* ============================================================================
+   HANDRAIL — DESIGN TOKENS
+   Direction A, "Calm Instrument". Chosen 2026-08-08.
+
+   Three layers, in dependency order. Components may only reference layer 3
+   (or layer 2 where no component token exists). Nothing outside this file
+   should contain a raw hex value.
+
+     1. PRIMITIVE  raw values, no meaning attached
+     2. SEMANTIC   what a value means (surface, text, accent, danger)
+     3. COMPONENT  what a specific part uses
+
+   THE GOVERNING CONSTRAINT
+   Handrail draws on top of software it does not control. The host app may be
+   near-black (Premiere, Unreal, After Effects) or near-white (Excel, a
+   browser). Every token here is chosen to survive both. Where a value cannot
+   survive both on its own — the mint accent on white being the obvious case —
+   the component carries its own dark casing rather than trusting the ground.
+   ========================================================================== */
+
+:root {
+  /* ==========================================================================
+     1. PRIMITIVE
+     ========================================================================== */
+
+  /* --- Signature -----------------------------------------------------------
+     Mint. Picked because blue collides with selection and focus chrome in
+     essentially every host application, and red and amber carry error and
+     warning semantics that would misrepresent a guidance cue.               */
+  --mint-400: #6BE8C4;
+  --mint-500: #2FD9A8;   /* the signature. The arrow is this colour.         */
+  --mint-600: #1FB88C;
+  --mint-900: #08110E;   /* text that sits ON mint                           */
+
+  /* --- Neutrals ------------------------------------------------------------
+     Cool-biased, not pure grey — a neutral with a hue lean reads as chosen. */
+  --ink-000: #FFFFFF;
+  --ink-050: #F2F5F7;
+  --ink-300: #9BA5B1;
+  --ink-500: #6B7480;
+  --ink-800: #1E2229;
+  --ink-900: #131519;   /* the overlay's ground                              */
+  --ink-950: #0B0D10;
+
+  /* --- Alpha ramps ---------------------------------------------------------
+     Overlay surfaces are translucent, so most values are alpha over unknown
+     content rather than solid colours.                                      */
+  --white-a04: rgba(255, 255, 255, 0.04);
+  --white-a07: rgba(255, 255, 255, 0.07);
+  --white-a10: rgba(255, 255, 255, 0.10);
+  --white-a14: rgba(255, 255, 255, 0.14);
+  --white-a20: rgba(255, 255, 255, 0.20);
+  --white-a34: rgba(255, 255, 255, 0.34);
+  --white-a44: rgba(255, 255, 255, 0.44);
+  --white-a62: rgba(255, 255, 255, 0.62);
+  --white-a88: rgba(255, 255, 255, 0.88);
+
+  --black-a30: rgba(0, 0, 0, 0.30);
+  --black-a45: rgba(0, 0, 0, 0.45);
+  --black-a50: rgba(0, 0, 0, 0.50);
+  --black-a55: rgba(0, 0, 0, 0.55);
+
+  --mint-a16: rgba(47, 217, 168, 0.16);
+  --mint-a34: rgba(47, 217, 168, 0.34);
+  --mint-a55: rgba(47, 217, 168, 0.55);
+
+  /* --- Status --------------------------------------------------------------
+     Deliberately separate from the accent. The accent means "look here";
+     these mean "something happened". Conflating them is how an overlay
+     starts lying to the user.                                               */
+  --danger-500:  #FF6B5B;
+  --warning-500: #FFB84D;
+  --success-500: #2FD9A8;   /* intentionally the accent — success IS on-path */
+
+  /* --- Type ----------------------------------------------------------------
+     Inter, bundled with the app. Never fetched at runtime: an overlay that
+     falls back to a different face mid-session looks broken.
+     JetBrains Mono only for terminal commands and key caps.                 */
+  --font-ui:   "Inter", ui-sans-serif, -apple-system, "Segoe UI Variable Text",
+               "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "SF Mono",
+               Consolas, monospace;
+
+  /* Compact scale. The overlay is small and sits over dense professional
+     software; 16px body would make it a billboard. 11px is the floor and is
+     reserved for labels that are never the only carrier of meaning.         */
+  --text-micro: 10.5px;   /* uppercase labels, key caps                      */
+  --text-xs:    11.5px;   /* chips, metadata, step numbers                   */
+  --text-sm:    12.5px;   /* default UI text, input, step body               */
+  --text-md:    13.5px;   /* answer body — the only long-form text           */
+  --text-lg:    15px;     /* panel and task titles                           */
+  --text-xl:    19px;     /* onboarding headings only                        */
+
+  --leading-tight:  1.28;
+  --leading-normal: 1.45;
+  --leading-body:   1.55;   /* answer prose only                             */
+
+  --tracking-label: 0.08em;   /* uppercase micro-labels                      */
+  --tracking-tight: -0.01em;  /* titles                                      */
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semi:   600;
+
+  /* --- Space ---------------------------------------------------------------
+     4px base. Dense end of the scale, because the overlay competes for
+     screen with the app it is teaching.                                     */
+  --space-1: 4px;
+  --space-2: 7px;
+  --space-3: 10px;
+  --space-4: 14px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-7: 40px;
+
+  /* --- Radius --------------------------------------------------------------
+     Small and consistent. Large radii read as consumer software and would
+     fight the professional applications underneath.                         */
+  --radius-xs:   3px;    /* chips, key caps                                  */
+  --radius-sm:   6px;    /* buttons, inputs, list rows                       */
+  --radius-md:   9px;    /* the bar, the answer panel                        */
+  --radius-lg:   12px;   /* onboarding window, side panels                   */
+  --radius-full: 999px;  /* collapsed pill                                   */
+
+  /* --- Elevation -----------------------------------------------------------
+     One shadow, two depths. An overlay has no z-axis to speak of; more
+     levels than this would be invented complexity.                          */
+  --shadow-float: 0 8px 24px var(--black-a45);
+  --shadow-panel: 0 16px 44px var(--black-a50);
+
+  --blur-surface: 18px;
+
+  /* --- Motion --------------------------------------------------------------
+     Fast and quiet. Motion in an overlay is interruption, so it earns its
+     place by conveying where something came from, never by decorating.
+     Exits are faster than entrances — leaving should feel like getting out
+     of the way.                                                             */
+  --dur-instant: 90ms;
+  --dur-fast:    150ms;
+  --dur-normal:  220ms;
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in:     cubic-bezier(0.55, 0, 1, 0.45);
+
+  /* ==========================================================================
+     2. SEMANTIC
+     ========================================================================== */
+
+  --surface-overlay:  rgba(19, 21, 25, 0.90);   /* the bar and the pill      */
+  --surface-panel:    rgba(19, 21, 25, 0.94);   /* answer and side panels    */
+  --surface-solid:    var(--ink-900);           /* onboarding — not floating */
+  --surface-raised:   var(--white-a04);         /* rows, wells               */
+  --surface-hover:    var(--white-a07);
+
+  --border-subtle:    var(--white-a07);
+  --border-default:   var(--white-a10);
+  --border-strong:    var(--white-a20);
+  --border-accent:    var(--mint-a34);
+
+  --text-primary:     var(--white-a88);
+  --text-secondary:   var(--white-a62);
+  --text-tertiary:    var(--white-a44);
+  --text-placeholder: var(--white-a34);
+  --text-accent:      var(--mint-500);
+  --text-on-accent:   var(--mint-900);
+
+  --accent:           var(--mint-500);
+  --accent-hover:     var(--mint-400);
+  --accent-quiet:     var(--mint-a16);
+
+  --focus-ring:       var(--mint-500);
+  --focus-ring-width: 2px;
+
+  /* ==========================================================================
+     3. COMPONENT
+     ========================================================================== */
+
+  /* --- The bar (default state on launch) --- */
+  --bar-bg:        var(--surface-overlay);
+  --bar-border:    var(--border-default);
+  --bar-radius:    var(--radius-md);
+  --bar-shadow:    var(--shadow-float);
+  --bar-pad-y:     var(--space-2);
+  --bar-pad-x:     var(--space-3);
+  --bar-gap:       var(--space-3);
+  --bar-min-width: 380px;
+  --bar-max-width: 620px;
+
+  /* --- The collapsed pill --- */
+  --pill-bg:     var(--surface-overlay);
+  --pill-border: var(--border-default);
+  --pill-radius: var(--radius-full);
+  --pill-height: 30px;
+
+  /* --- The answer panel --- */
+  --panel-bg:        var(--surface-panel);
+  --panel-border:    var(--border-default);
+  --panel-radius:    var(--radius-md);
+  --panel-shadow:    var(--shadow-panel);
+  --panel-max-width: 620px;
+  --panel-max-height: 460px;
+
+  /* --- Step list --- */
+  --step-marker-size:   16px;
+  --step-marker-idle:   var(--border-strong);
+  --step-marker-now:    var(--accent);
+  --step-marker-done:   var(--accent);
+  --step-divider:       var(--white-a04);
+
+  /* --- The on-screen arrow -------------------------------------------------
+     THE most important component, and the only one drawn outside a window.
+
+     The dual stroke is not decoration. Mint on white is roughly 1.9:1 — far
+     below legible. The dark outer casing means the marker carries its own
+     contrast onto any ground rather than assuming one. Never render the
+     accent stroke without the casing beneath it.                            */
+  --arrow-stroke:        var(--accent);
+  --arrow-stroke-width:  2.6px;
+  --arrow-casing:        var(--black-a55);
+  --arrow-casing-width:  7px;
+  --arrow-head-length:   17px;
+  --arrow-head-spread:   0.42rad;
+  --arrow-tip-gap:       14px;   /* never touch the control being pointed at */
+  --arrow-length:        150px;
+
+  --ring-stroke:         var(--accent);
+  --ring-stroke-width:   2.5px;
+  --ring-casing-width:   6px;
+  --ring-radius:         7px;
+  --ring-inset:          -3px;
+  --ring-pulse-dur:      1900ms;
+}
+
+/* ============================================================================
+   ACCESSIBILITY BASELINE
+   ========================================================================== */
+
+/* Focus must always be visible. An overlay is operated by keyboard as often as
+   by mouse, and the user may not be able to see a hidden caret over a busy
+   host application. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The pulse on the arrow ring is the only ambient motion in the product, and
+   it sits on top of someone else's screen — respecting this is not optional. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --ring-pulse-dur: 0ms; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Windows and macOS high-contrast modes strip translucency. Fall back to a
+   solid ground rather than letting the overlay become unreadable. */
+@media (prefers-contrast: more) {
+  :root {
+    --surface-overlay: var(--ink-950);
+    --surface-panel:   var(--ink-950);
+    --border-default:  var(--white-a34);
+    --text-secondary:  var(--white-a88);
+  }
+}

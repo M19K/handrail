@@ -1,0 +1,639 @@
+<title>Handrail — Mark C, four variations</title>
+
+<style>
+  :root {
+    --b-ground:#F4F5F7; --b-card:#FFFFFF; --b-ink:#14181D; --b-ink2:#454E58;
+    --b-ink3:#79828E; --b-rule:#DDE1E6; --b-rule2:#C3C9D1;
+    --mint:#2FD9A8; --ink-900:#131519;
+    --b-sans: ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --b-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --b-ground:#101317; --b-card:#171B21; --b-ink:#EDF0F3; --b-ink2:#A8B1BC;
+            --b-ink3:#6F7883; --b-rule:#262C34; --b-rule2:#363E48; }
+  }
+  :root[data-theme="dark"] { --b-ground:#101317; --b-card:#171B21; --b-ink:#EDF0F3;
+    --b-ink2:#A8B1BC; --b-ink3:#6F7883; --b-rule:#262C34; --b-rule2:#363E48; }
+  :root[data-theme="light"] { --b-ground:#F4F5F7; --b-card:#FFFFFF; --b-ink:#14181D;
+    --b-ink2:#454E58; --b-ink3:#79828E; --b-rule:#DDE1E6; --b-rule2:#C3C9D1; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--b-ground); color:var(--b-ink);
+         font-family:var(--b-sans); font-size:16px; line-height:1.55;
+         -webkit-font-smoothing:antialiased; }
+  .shell { max-width:1080px; margin:0 auto; padding:0 24px; }
+
+  .masthead { padding:68px 0 36px; border-bottom:1px solid var(--b-rule); }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.13em; text-transform:uppercase;
+             color:var(--b-ink3); margin:0 0 15px; }
+  h1 { margin:0 0 15px; font-size:clamp(29px,4vw,42px); line-height:1.08;
+       letter-spacing:-.025em; font-weight:660; }
+  .standfirst { margin:0; max-width:60ch; font-size:17px; color:var(--b-ink2); }
+
+  .diagnosis { margin-top:26px; border-left:2px solid var(--b-rule2); padding:4px 0 4px 16px; }
+  .diagnosis p { margin:0 0 8px; font-size:14.5px; color:var(--b-ink2); line-height:1.55; }
+  .diagnosis p:last-child { margin:0; }
+  .diagnosis strong { color:var(--b-ink); font-weight:600; }
+
+  /* --- the 16px shootout, up top because it's the whole argument --- */
+  .shootout { padding:44px 0; border-bottom:1px solid var(--b-rule); }
+  .shootout h2 { margin:0 0 6px; font-size:23px; letter-spacing:-.02em; font-weight:640; }
+  .shootout .sub { margin:0 0 24px; font-size:15px; color:var(--b-ink2); max-width:58ch; }
+  .strip { border:1px solid var(--b-rule2); border-radius:5px; overflow:hidden; }
+  .strip-cap { padding:7px 12px; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+               color:var(--b-ink3); font-weight:600; border-bottom:1px solid var(--b-rule);
+               background:var(--b-card); }
+  .strip-body { background:var(--ink-900); padding:30px 20px;
+                display:flex; align-items:flex-end; justify-content:center;
+                gap:38px; flex-wrap:wrap; }
+  .sixteen { display:flex; flex-direction:column; align-items:center; gap:11px; }
+  .sixteen small { font-family:var(--b-mono); font-size:10px; color:rgba(255,255,255,.34); }
+  .sixteen small.flag { color:#FF8C7A; }
+  .sixteen small.ok { color:var(--mint); }
+
+  /* --- variation blocks --- */
+  .var { padding:46px 0; border-bottom:1px solid var(--b-rule); }
+  .var-head { display:flex; align-items:baseline; gap:13px; margin-bottom:5px; }
+  .var-id { font-family:var(--b-mono); font-size:12px; color:var(--b-ink3); }
+  .var h2 { margin:0; font-size:25px; letter-spacing:-.02em; font-weight:640; }
+  .var-note { margin:0 0 24px; max-width:58ch; font-size:15px; color:var(--b-ink2); }
+
+  .row { display:grid; gap:20px; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); }
+  @media (max-width:820px){ .row { grid-template-columns:1fr; } }
+
+  .plate { border:1px solid var(--b-rule2); border-radius:5px; overflow:hidden; }
+  .plate-cap { padding:7px 12px; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+               color:var(--b-ink3); font-weight:600; border-bottom:1px solid var(--b-rule);
+               background:var(--b-card); }
+  .plate-body { padding:32px 22px; display:flex; align-items:center; justify-content:center; gap:30px; }
+  .on-dark { background:var(--ink-900); }
+  .on-light { background:#FFFFFF; }
+
+  .ladder { display:flex; align-items:flex-end; gap:26px; flex-wrap:wrap; justify-content:center; }
+  .rung { display:flex; flex-direction:column; align-items:center; gap:9px; }
+  .rung small { font-family:var(--b-mono); font-size:10px; color:rgba(255,255,255,.32); }
+  .on-light .rung small { color:#98A0AA; }
+
+  .appicon { width:80px; height:80px; border-radius:19px; display:flex;
+             align-items:center; justify-content:center;
+             background:linear-gradient(160deg,#20242B,#101216);
+             border:1px solid rgba(255,255,255,.09);
+             box-shadow:0 10px 26px rgba(0,0,0,.4); }
+  .ctx-pill { display:inline-flex; align-items:center; gap:8px; height:30px;
+    background:rgba(19,21,25,.92); border:1px solid rgba(255,255,255,.10);
+    border-radius:999px; padding:0 13px 0 9px; box-shadow:0 8px 24px rgba(0,0,0,.45); }
+  .ctx-pill span { font-size:11.5px; color:rgba(255,255,255,.62); }
+  .wordmark { display:flex; align-items:center; gap:11px; }
+  .wordmark .wm-text { font-size:22px; font-weight:600; letter-spacing:-.02em;
+                       color:rgba(255,255,255,.92); }
+
+  .verdict { display:grid; gap:16px; margin-top:22px;
+             grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
+  .v { border-left:2px solid var(--b-rule2); padding:2px 0 2px 14px; }
+  .v.pro { border-left-color:#3FA37A; }
+  .v.con { border-left-color:#C2603F; }
+  .v b { display:block; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+         color:var(--b-ink3); font-weight:600; margin-bottom:5px; }
+  .v ul { margin:0; padding-left:16px; }
+  .v li { font-size:14px; color:var(--b-ink2); margin-bottom:4px; line-height:1.45; }
+
+  .closing { padding:48px 0 96px; }
+  .closing h2 { margin:0 0 12px; font-size:25px; letter-spacing:-.02em; font-weight:640; }
+  .rec { border-left:2px solid var(--mint); padding:2px 0 2px 16px; }
+  .rec p { margin:0 0 11px; font-size:15px; color:var(--b-ink2); line-height:1.55; }
+  .rec p:last-child { margin-bottom:0; }
+  .rec strong { color:var(--b-ink); font-weight:600; }
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none!important} }
+</style>
+
+<header class="masthead">
+  <div class="shell">
+    <p class="eyebrow">Handrail · Identity · Mark C, revisited</p>
+    <h1>Four ways to fix C</h1>
+    <p class="standfirst">
+      C was right about one thing and wrong about another. Keeping the part that
+      worked — an unmistakable, steady handrail — and fixing the part that didn't.
+    </p>
+
+    <div class="diagnosis">
+      <p><strong>What C got right.</strong> It is the only mark nobody has to have explained. A rail carried on posts reads as something solid to hold onto, which is the whole promise of the product.</p>
+      <p><strong>What broke it.</strong> Three strokes of equal weight, evenly spaced, on a symmetrical grid. At 16px the eye stops seeing a rail and starts seeing a table — or the Greek letter pi. Symmetry is the bug, not the stroke count.</p>
+      <p><strong>The fix in every variation below is to break the symmetry</strong> — by tilting the rail, by removing a post, by adding a point of interest, or by making it one continuous line.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ============ THE 16PX SHOOTOUT ============ -->
+<section class="shootout">
+  <div class="shell">
+    <h2>At 16 pixels, which is where it lives</h2>
+    <p class="sub">
+      System tray, taskbar, the collapsed pill. If a mark fails here it fails, whatever
+      it looks like blown up. Original C first, for comparison.
+    </p>
+
+    <div class="strip">
+      <div class="strip-cap">All marks at 16px — actual size</div>
+      <div class="strip-body">
+
+        <div class="sixteen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Original C">
+            <path d="M2.5 9.5h19" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+            <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.36)" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <small class="flag">C · original</small>
+        </div>
+
+        <div class="sixteen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="C1">
+            <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+            <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.36)" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <small class="ok">C1 · Stair</small>
+        </div>
+
+        <div class="sixteen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="C2">
+            <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+            <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.36)" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <small class="ok">C2 · Terminal</small>
+        </div>
+
+        <div class="sixteen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="C3">
+            <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="9.5" cy="9.5" r="4" fill="#2FD9A8"/>
+          </svg>
+          <small class="ok">C3 · Grip</small>
+        </div>
+
+        <div class="sixteen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="C4">
+            <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="3"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <small class="ok">C4 · One line</small>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C1 ============ -->
+<section class="var">
+  <div class="shell">
+    <div class="var-head"><span class="var-id">C1</span><h2>Stair Rail</h2></div>
+    <p class="var-note">
+      Tilt the rail. The moment it stops being horizontal it stops being a table, and
+      becomes the thing everybody has actually held — the rail going up a staircase.
+      Posts stay vertical and land on a common floor, which is what sells the slope.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+                <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.36)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:15px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+                <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.34)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 16.5L21 8" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7.5 14.4V20M16.5 10.1V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>Kills the table reading outright — a tilted rail can't be a table</li>
+        <li>Still obviously a handrail, and now specifically a stair rail</li>
+        <li>Carries an implicit direction of travel without using an arrow</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Still three strokes; the posts crowd at very small sizes</li>
+        <li>Diagonals render less crisply than orthogonals at 16px</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C2 ============ -->
+<section class="var">
+  <div class="shell">
+    <div class="var-head"><span class="var-id">C2</span><h2>Terminal</h2></div>
+    <p class="var-note">
+      Delete a post. One post, off centre, with the rail overhanging it — the end of a
+      handrail rather than a section of one. Two strokes, asymmetric, and it cannot be
+      read as a table because tables don't have one leg.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+                <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.36)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:15px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="3" stroke-linecap="round"/>
+                <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.34)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9.5h18" stroke="#2FD9A8" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M16.5 9.5V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>Two strokes — as robust at 16px as anything on the board</li>
+        <li>Asymmetric, so it never resolves into a table or a pi</li>
+        <li>Orthogonal, so it renders crisply at every size</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Somewhat close to a generic "flag" or "corner" glyph</li>
+        <li>Quiet to the point of being forgettable</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C3 ============ -->
+<section class="var">
+  <div class="shell">
+    <div class="var-head"><span class="var-id">C3</span><h2>The Grip</h2></div>
+    <p class="var-note">
+      Keep all three strokes but stop them competing. Rail and posts drop back to
+      neutral, and the mint moves to a single grip on the rail — a hand on it, and your
+      position along it. The structure stays literal; the meaning gets added on top.
+      This is C with A's idea grafted in.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="9.5" cy="9.5" r="3.6" fill="#2FD9A8"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="9.5" cy="9.5" r="3.6" fill="#2FD9A8"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="9.5" cy="9.5" r="3.6" fill="#2FD9A8"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="9.5" cy="9.5" r="4" fill="#2FD9A8"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plate">
+        <div class="plate-cap">In context · and as a progress component</div>
+        <div class="plate-body on-dark" style="flex-direction:column;gap:22px;">
+          <div style="display:flex;align-items:center;gap:28px;">
+            <div class="appicon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="2.6" stroke-linecap="round"/>
+                <circle cx="9.5" cy="9.5" r="3.6" fill="#2FD9A8"/>
+              </svg>
+            </div>
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M7 9.5v10M17 9.5v10" stroke="rgba(255,255,255,.20)" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="9.5" cy="9.5" r="4" fill="#2FD9A8"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+          </div>
+
+          <!-- the grip sliding as steps complete -->
+          <div style="display:flex;align-items:center;gap:16px;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              <circle cx="5" cy="9.5" r="3.6" fill="#2FD9A8"/>
+            </svg>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              <circle cx="12" cy="9.5" r="3.6" fill="#2FD9A8"/>
+            </svg>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M2.5 9.5h19" stroke="rgba(255,255,255,.34)" stroke-width="2.6" stroke-linecap="round"/>
+              <circle cx="19" cy="9.5" r="3.6" fill="#2FD9A8"/>
+            </svg>
+            <span style="font-size:11px;color:rgba(255,255,255,.34);">step 1 → 3 → 5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>Keeps C's literal handrail and adds what C was missing — a person on it</li>
+        <li>The mint dot breaks the symmetry, so the table reading disappears</li>
+        <li>Doubles as a progress component; the grip slides as steps complete</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Four elements. The busiest thing here, and it shows at 16px</li>
+        <li>Needs two tones to work; a single-colour version loses the hierarchy</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C4 ============ -->
+<section class="var">
+  <div class="shell">
+    <div class="var-head"><span class="var-id">C4</span><h2>One Line</h2></div>
+    <p class="var-note">
+      Draw the whole thing without lifting the pen. The rail runs flat, then turns down
+      into its own post — a real handrail terminal, the bit you actually grab at the
+      bottom of a staircase. One element, so there is nothing to break.
+    </p>
+
+    <div class="row">
+      <div class="plate">
+        <div class="plate-cap">On dark · size ladder</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>64</small>
+            </div>
+            <div class="rung">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>32</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plate">
+        <div class="plate-cap">In context</div>
+        <div class="plate-body on-dark">
+          <div class="appicon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="2.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:15px;align-items:flex-start;">
+            <span class="ctx-pill">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Handrail</span>
+            </span>
+            <span class="wordmark">
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#2FD9A8" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="wm-text">Handrail</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:20px;">
+      <div class="plate">
+        <div class="plate-cap">On light · single colour</div>
+        <div class="plate-body on-light">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#14181D" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>48</small>
+            </div>
+            <div class="rung">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#14181D" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>24</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="#14181D" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plate">
+        <div class="plate-cap">C4 with a grip — optional hybrid</div>
+        <div class="plate-body on-dark">
+          <div class="ladder">
+            <div class="rung">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="rgba(255,255,255,.34)" stroke-width="2.6"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="8" cy="9" r="3.4" fill="#2FD9A8"/>
+              </svg>
+              <small>48</small>
+            </div>
+            <div class="rung">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20" stroke="rgba(255,255,255,.34)" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="8" cy="9" r="3.8" fill="#2FD9A8"/>
+              </svg>
+              <small>16</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="v pro"><b>For</b><ul>
+        <li>One continuous stroke — cannot break, works in any single colour</li>
+        <li>The curve is the most rail-like shape here; it reads as something you'd grip</li>
+        <li>Takes a grip dot cleanly if you want the progress idea later</li>
+      </ul></div>
+      <div class="v con"><b>Against</b><ul>
+        <li>Without the dot it says "support" but not "guidance"</li>
+        <li>The curve is close to a rounded corner bracket used in some UI kits</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="shell">
+    <h2>My read</h2>
+    <div class="rec">
+      <p>
+        <strong>C4 with the grip.</strong> One continuous stroke gives you C's literal
+        handrail with none of its fragility, and the curve at the end is genuinely the
+        most rail-like shape on this page — it looks like something you would put your
+        hand on. Add the mint grip and it also carries the progress idea, without the
+        four-element clutter of C3.
+      </p>
+      <p>
+        <strong>C2 is the safe pick.</strong> Two orthogonal strokes, crisp at every
+        size, impossible to misread. It is also the least memorable.
+      </p>
+      <p>
+        <strong>C1 is the most charming and the most fragile.</strong> The tilt solves
+        the table problem beautifully at 32px and up, but diagonals are exactly what
+        goes soft at 16px, which is where this mark lives.
+      </p>
+      <p>
+        <strong>C3 proves a point rather than winning.</strong> It shows the grip idea
+        works on a literal rail — but C4 gets the same idea for a quarter of the ink.
+      </p>
+    </div>
+  </div>
+</section>

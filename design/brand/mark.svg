@@ -1,0 +1,18 @@
+<!--
+  Handrail — primary mark.
+
+  A handrail drawn in one continuous stroke: flat, then turning down into its
+  own post. The mint grip is the person on it, and its position along the flat
+  section is meaningful — see brand/README.md.
+
+  Two-tone. The rail uses currentColor so it inherits from context; the grip is
+  always the signature mint. For single-colour contexts use mark-mono.svg.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+     width="24" height="24" role="img" aria-label="Handrail">
+  <title>Handrail</title>
+  <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20"
+        stroke="currentColor" stroke-opacity="0.42"
+        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="8" cy="9" r="3.4" fill="#2FD9A8"/>
+</svg>

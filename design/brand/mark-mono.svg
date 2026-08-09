@@ -1,0 +1,19 @@
+<!--
+  Handrail — monochrome mark.
+
+  For contexts that cannot carry two tones: favicons below 24px, system tray on
+  platforms that recolour icons, stencils, print, embroidery, and anywhere the
+  mark sits on the accent colour itself.
+
+  The grip stays filled rather than dropping to an outline — a filled dot is
+  what survives when everything else is one colour, and it is the only thing
+  keeping the mark asymmetric.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+     width="24" height="24" role="img" aria-label="Handrail">
+  <title>Handrail</title>
+  <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20"
+        stroke="currentColor" stroke-width="2.6"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="8" cy="9" r="3.4" fill="currentColor"/>
+</svg>

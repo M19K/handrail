@@ -1,0 +1,16 @@
+<!--
+  Handrail — 16px optimised mark.
+
+  NOT a scaled copy of mark.svg. At 16px the 2.6 stroke lands between pixels and
+  the 3.4 grip loses its edge, so both are thickened and the grip is nudged left
+  to keep clear of the curve. Use this file, not the 24px one, anywhere the mark
+  renders at 20px or below: system tray, taskbar, favicon, the collapsed pill.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+     width="16" height="16" role="img" aria-label="Handrail">
+  <title>Handrail</title>
+  <path d="M3 9h11.5c3 0 4.5 1.6 4.5 4.5V20"
+        stroke="currentColor" stroke-opacity="0.45"
+        stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="7.5" cy="9" r="3.8" fill="#2FD9A8"/>
+</svg>
