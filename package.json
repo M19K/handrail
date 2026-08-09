@@ -14,7 +14,8 @@
     "build:win": "electron-builder --win",
     "pack": "electron-builder --dir",
     "clean": "rimraf dist",
-    "qa": "node --test --test-concurrency=1 tests/qa/*.test.js"
+    "qa": "node --test --test-concurrency=1 tests/qa/*.test.js",
+    "compare-models": "electron scripts/compare-models.js"
   },
   "author": {
     "name": "Maaz Kazi",
