@@ -19,9 +19,24 @@ Last updated: 2026-08-09
 - shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
 - rebuild + reinstall: `node scripts/package-win.js --install`
 
-19 commits. `7909792` is pristine upstream, so `git diff 7909792..HEAD` is the
-portfolio artifact: **93 files, +13,146 / −21,781** — it removes more than it adds,
-which is the point.
+24 commits, pushed. `7909792` is pristine upstream and is the first commit on
+GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
++13,146 / −21,781** — it removes more than it adds, which is the point.
+
+- repo: **https://github.com/M19K/handrail** — public, no fork relationship
+- release: **v0.1.0 is a DRAFT**, not published. Four assets built by CI:
+  `Handrail-Setup-0.1.0.exe`, `Handrail.0.1.0.exe` (portable),
+  `Handrail-0.1.0.dmg` (x64), `Handrail-0.1.0-arm64.dmg`
+- publishing it is a deliberate human step — check the notes, then press it
+
+### ⚠ The stored API key on this machine is unreadable
+
+`key.dat` in `%APPDATA%\Handrail` is a legacy bare-buffer record from the very
+first version, and DPAPI on this machine can no longer decrypt it. So the
+installed app opens onboarding, with the "could not be read" notice showing —
+that is correct behaviour, not a regression. **Paste the key again to fix it.**
+The file is no longer deleted on a failed decrypt (review finding T5), so
+nothing was lost that was not already lost.
 
 ### Built since the last handoff
 
