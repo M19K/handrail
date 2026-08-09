@@ -129,6 +129,33 @@ per step. The local gate is what keeps it there.
 
 ---
 
+## Indicators
+
+The arrow drawn on the real screen, plus its message. Called an indicator.
+
+**When one appears.** Whenever the reply tells the user to touch something that
+is visibly on screen — a checklist step or an ordinary answer. It is not tied to
+checklists; a plain reply saying "right-click the tab and choose Show in system
+explorer" gets an indicator too.
+
+**One at a time.** Two arrows is a diagram, not an instruction.
+
+**How it goes away**, in the order it usually happens:
+
+| Trigger | Why |
+|---|---|
+| The user clicks its X | Guidance you have finished with is guidance in the way |
+| The step it belongs to completes | It is pointing at something already done |
+| The next question is asked | It belongs to the previous answer |
+| The overlay is collapsed or quit | An arrow stranded on screen with Handrail gone is the worst failure this product has |
+| 45 seconds | A backstop, not the intended route. Long enough to act on while actually doing the thing |
+
+**The X is the only clickable thing on the pane.** Everything else stays
+click-through, because the user has to be able to click the control the arrow is
+pointing at. The window accepts clicks only while the cursor is over the label.
+
+---
+
 ## Visual cues (v1.1, architect for it now)
 
 Drawing arrows/highlights **on the actual screen** at the actual button. This is

@@ -30,13 +30,18 @@ const RENDERER = path.join(ROOT, 'renderer');
 const STEALTH_DEFAULT = process.env.STEALTH_MODE !== 'false';
 
 /**
- * How long an arrow stays before removing itself.
+ * How long an indicator stays before removing itself.
  *
- * Long enough to find the control it points at, short enough that it does not
- * become permanent furniture on the user's screen. The step it belongs to stays
- * highlighted in the overlay either way, so nothing is lost when it goes.
+ * A backstop, not the usual way it goes. An indicator normally leaves because
+ * the user dismissed it, the step it belongs to finished, or the next turn
+ * replaced it. This exists so one can never be stranded on somebody's screen
+ * pointing at a control that has since moved.
+ *
+ * Raised from 14s: long enough to read, but not long enough to act on while
+ * actually doing the thing — and there is a dismiss button now, so the timer no
+ * longer has to be the only way out.
  */
-const ARROW_DWELL_MS = 14000;
+const ARROW_DWELL_MS = 45000;
 
 class Windows {
   constructor(store) {
@@ -247,12 +252,13 @@ class Windows {
       // The arrow points at a real control, so the user must be able to click
       // that control straight through it.
       //
-      // Deliberately WITHOUT `forward: true`. Forwarding makes Chromium
-      // synthesise and dispatch a mouse event into this window for every single
-      // cursor movement anywhere it covers — which was the single biggest cause
-      // of the lag users felt while an arrow was on screen. Nothing in here
-      // reacts to the mouse, so there is nothing to forward.
-      this.arrow.setIgnoreMouseEvents(true);
+      // Forwarding is back, but only because the window is now a few hundred
+      // pixels rather than the whole display. Full-screen forwarding meant
+      // Chromium synthesised a mouse event for every cursor movement anywhere
+      // on screen, which was the single biggest cause of the lag users felt.
+      // Over a small region it is cheap, and it is what lets the label carry a
+      // dismiss button while every other pixel stays click-through.
+      this.arrow.setIgnoreMouseEvents(true, { forward: true });
       this.arrow.loadFile(path.join(RENDERER, 'arrow.html'));
       this.arrow.on('closed', () => { this.arrow = null; });
       this.applyStealth(this.store.getSettings().stealth);
@@ -280,6 +286,18 @@ class Windows {
     this._arrowTimer = setTimeout(() => {
       if (this.arrow && !this.arrow.isDestroyed()) this.arrow.hide();
     }, ARROW_DWELL_MS);
+  }
+
+  /**
+   * Accept clicks on the indicator, or return to click-through.
+   *
+   * Driven by the renderer as the cursor crosses the label's edge. Electron's
+   * ignore-mouse-events is window-wide, so toggling it is the only way to have
+   * exactly one clickable region on an otherwise transparent pane.
+   */
+  setArrowInteractive(on) {
+    if (!this.arrow || this.arrow.isDestroyed()) return;
+    this.arrow.setIgnoreMouseEvents(!on, { forward: true });
   }
 
   // --- onboarding ---------------------------------------------------------

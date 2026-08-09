@@ -18,7 +18,8 @@
     user-select: none;
     font-family: var(--font-ui);
   }
-  #stage { position: absolute; inset: 0; }
+  #stage { position: absolute; inset: 0; pointer-events: none; }
+  .label { pointer-events: auto; }
 
   /* No ring, and no pulse. A marker drawn on top of the control competes with
      the thing the user is being asked to click, and an animated stroke on an
@@ -38,7 +39,24 @@
     box-shadow: var(--shadow-float);
     animation: fade var(--dur-normal) var(--ease-out) both;
   }
+  .label { display: flex; align-items: flex-start; gap: var(--space-3); }
+  .label > div { min-width: 0; }
   .label p { margin: 0; font-size: var(--text-sm); line-height: 1.4; color: var(--text-primary); }
+
+  /* The only clickable thing on an otherwise click-through pane. */
+  .label__close {
+    flex: none;
+    width: 18px; height: 18px;
+    margin: -2px -3px 0 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 0; padding: 0; background: none;
+    border-radius: var(--radius-xs);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    pointer-events: auto;
+    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  }
+  .label__close:hover { color: var(--text-primary); background: var(--surface-hover); }
   .label span {
     display: block; margin-top: 4px;
     font-size: var(--text-micro); font-weight: var(--weight-semi);

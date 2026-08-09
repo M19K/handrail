@@ -679,3 +679,61 @@ button {
   padding-left: 18px;
 }
 .prose p + ul, .prose p + ol { margin-top: var(--space-1); }
+
+/* The send key. It always looked like a button; now it is one. */
+.kbd--send {
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.kbd--send:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-quiet);
+}
+.kbd--send:active { transform: translateY(0.5px); }
+
+/* ----------------------------------------------------------------------------
+   Context menu — threads
+   -------------------------------------------------------------------------- */
+.menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 148px;
+  padding: var(--space-1);
+  background: var(--panel-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(var(--blur-surface));
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: left;
+}
+.menu button:hover { background: var(--surface-hover); color: var(--text-primary); }
+.menu button.danger:hover { color: var(--danger-500); background: rgba(255, 107, 91, 0.12); }
+
+/* Inline rename. Editing in place beats a dialog for a one-field change, and
+   Electron has no window.prompt to fall back on anyway. */
+.thread__rename {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-xs);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: 2px 5px;
+  outline: 0;
+  user-select: text;
+}

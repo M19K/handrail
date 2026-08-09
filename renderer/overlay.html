@@ -100,7 +100,10 @@
             </svg>
           </button>
           <span class="rule-v"></span>
-          <span class="kbd">⏎</span>
+          <!-- A real submit button, not a decorative key cap. It looked
+               clickable, so it had to be clickable. -->
+          <button type="submit" class="kbd kbd--send" id="send"
+                  aria-label="Send" title="Send">⏎</button>
         </div>
 
         <!-- Drag handle. Four columns rather than two: this is a target people

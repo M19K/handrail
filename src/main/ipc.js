@@ -144,6 +144,20 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
   // handles a key in plain text, so there is no second place to maintain.
   handle('hr:window:open-setup', () => { windows.showOnboarding(); });
 
+  // --- the indicator ------------------------------------------------------
+  //
+  // ipcMain.on rather than handle: these are one-way and the first fires as the
+  // cursor crosses the label's edge, so a promise per message would be overhead
+  // for nothing.
+  ipcMain.on('hr:arrow:interactive', (_event, on) => windows.setArrowInteractive(on));
+
+  ipcMain.on('hr:arrow:dismiss', () => {
+    // Dismissing the indicator dismisses only the indicator. The checklist and
+    // the watching loop are what the user is actually doing; tearing those down
+    // because they closed a label would be a surprising amount of collateral.
+    windows.showArrow(null);
+  });
+
   // --- setup --------------------------------------------------------------
 
   /**

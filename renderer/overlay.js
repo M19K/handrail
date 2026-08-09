@@ -750,6 +750,10 @@ function renderThreads() {
     row.className = 'thread';
     if (thread.id === state.openThreadId) row.setAttribute('aria-current', 'true');
     row.addEventListener('click', () => openThread(thread.id));
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openThreadMenu(e, thread, row);
+    });
 
     const title = document.createElement('span');
     title.className = 'thread__title';
@@ -765,6 +769,98 @@ function renderThreads() {
 
   el.threadList.replaceChildren(frag);
   scheduleResize();
+}
+
+/**
+ * Right-click a thread to rename or delete it.
+ *
+ * A renderer-drawn menu rather than Electron's native one: it inherits the
+ * overlay's own styling, and a native menu on a frameless always-on-top window
+ * is a second OS surface to keep in step with the first.
+ */
+let openMenu = null;
+
+function closeThreadMenu() {
+  if (!openMenu) return;
+  openMenu.remove();
+  openMenu = null;
+}
+
+function openThreadMenu(event, thread, row) {
+  closeThreadMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'menu';
+
+  const item = (label, onClick, danger) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    if (danger) button.className = 'danger';
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeThreadMenu();
+      onClick();
+    });
+    menu.append(button);
+  };
+
+  item('Rename', () => startRename(thread, row));
+  item('Delete', () => deleteThread(thread), true);
+
+  document.body.append(menu);
+
+  // Measure, then place, so a menu opened near an edge stays on screen. The
+  // overlay window is only as big as its content, so "near an edge" is most
+  // of the time.
+  const box = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(4, Math.min(window.innerWidth - box.width - 4, event.clientX))}px`;
+  menu.style.top = `${Math.max(4, Math.min(window.innerHeight - box.height - 4, event.clientY))}px`;
+
+  openMenu = menu;
+}
+
+function startRename(thread, row) {
+  const title = row.querySelector('.thread__title');
+  if (!title) return;
+
+  const input = document.createElement('input');
+  input.className = 'thread__rename';
+  input.value = thread.title;
+  title.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let settled = false;
+  const finish = async (save) => {
+    if (settled) return;
+    settled = true;
+    const next = input.value.trim();
+    if (save && next && next !== thread.title) await bridge.threads.rename(thread.id, next);
+    await refreshThreads();
+    // The header shows the open thread's name, so a rename has to reach it.
+    if (save && next && thread.id === state.openThreadId) el.panelTitle.textContent = next;
+  };
+
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();              // Escape here means "stop renaming"
+    if (e.key === 'Enter') finish(true);
+    if (e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('click', (e) => e.stopPropagation());
+}
+
+async function deleteThread(thread) {
+  await bridge.threads.remove(thread.id);
+  // Deleting the thread you are reading has to clear it, or the transcript
+  // stays on screen belonging to something that no longer exists.
+  if (thread.id === state.openThreadId) {
+    state.openThreadId = null;
+    clearTranscript();
+    setView('bar');
+  }
+  await refreshThreads();
 }
 
 function relativeGroup(ts) {
@@ -1067,8 +1163,15 @@ el.threadNew.addEventListener('click', async () => {
 // cases where the region is ignored.
 el.grip.addEventListener('mousedown', () => bridge.window.beginDrag());
 
+document.addEventListener('mousedown', (e) => {
+  if (openMenu && !openMenu.contains(e.target)) closeThreadMenu();
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+
+  // The menu is the most recent thing opened, so it is the first thing closed.
+  if (openMenu) { closeThreadMenu(); return; }
 
   // Least destructive thing first. Escape should never be the key that loses
   // someone's conversation.

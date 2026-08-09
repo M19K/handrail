@@ -65,17 +65,39 @@ function draw(payload) {
   const label = document.createElement('div');
   label.className = 'label';
 
+  const body = document.createElement('div');
+
   const text = document.createElement('p');
   text.textContent = String(payload.instruction || payload.label || '');
-  label.append(text);
+  body.append(text);
 
   if (payload.instruction && payload.label) {
     const sub = document.createElement('span');
     sub.textContent = String(payload.label);
-    label.append(sub);
+    body.append(sub);
   }
 
+  // Dismiss. Guidance you have finished with is guidance in the way, and
+  // waiting out a timer for it to leave is not a control.
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'label__close';
+  close.setAttribute('aria-label', 'Dismiss');
+  close.title = 'Dismiss';
+  const crossIcon = el('svg', { width: 10, height: 10, viewBox: '0 0 24 24', fill: 'none' });
+  crossIcon.append(el('path', {
+    d: 'M6 6l12 12M18 6L6 18',
+    stroke: 'currentColor',
+    'stroke-width': 2.6,
+    'stroke-linecap': 'round',
+  }));
+  close.append(crossIcon);
+  close.addEventListener('click', () => window.handrailArrow.dismiss());
+
+  label.append(body, close);
   stage.append(label);
+
+  trackHover(label);
 
   // Measure, then place. The window was sized against a generous reservation
   // for the label, so this only has to position within space already allowed.
@@ -92,4 +114,38 @@ function draw(payload) {
   label.style.top = `${Math.max(4, Math.min(h - box.height - 4, y))}px`;
 }
 
-window.handrailArrow.onDraw(draw);
+/**
+ * Accept clicks only while the cursor is over the label.
+ *
+ * The window has to stay click-through everywhere else, or it would block the
+ * very control the arrow is pointing at. Electron's ignore-mouse-events is
+ * window-wide, so the only way to have one clickable region is to toggle it as
+ * the cursor crosses that region's edge.
+ *
+ * Only sent on a CHANGE. Firing an IPC message per mouse move is how this kind
+ * of tracking becomes the performance problem it is meant to avoid.
+ */
+let interactive = false;
+
+function setInteractive(on) {
+  if (on === interactive) return;
+  interactive = on;
+  window.handrailArrow.setInteractive(on);
+}
+
+function trackHover(label) {
+  const inside = (event) => {
+    const box = label.getBoundingClientRect();
+    return event.clientX >= box.left && event.clientX <= box.right
+        && event.clientY >= box.top && event.clientY <= box.bottom;
+  };
+
+  document.addEventListener('mousemove', (event) => setInteractive(inside(event)));
+  // The cursor can leave through an edge without a final mousemove inside.
+  document.addEventListener('mouseleave', () => setInteractive(false));
+}
+
+window.handrailArrow.onDraw((payload) => {
+  setInteractive(false);   // a fresh marker starts click-through
+  draw(payload);
+});

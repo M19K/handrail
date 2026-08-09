@@ -407,6 +407,52 @@ async function run() {
   await store.setSettings({ capture: false, pointing: false });
   windows.showArrow(null);
 
+  // --- controls that have to actually work -------------------------------
+  console.log('\ncontrols');
+
+  // The send key looked like a button for several builds without being one.
+  const send = await feed(`(() => {
+    const b = document.getElementById('send');
+    return b ? { tag: b.tagName, type: b.type } : null;
+  })()`);
+  check('the send key is a real submit button',
+    send && send.tag === 'BUTTON' && send.type === 'submit', JSON.stringify(send));
+
+  // Right-click a thread for rename and delete.
+  await feed("document.getElementById('toggle-threads').click()");
+  await new Promise((r) => setTimeout(r, 250));
+
+  const menu = await feed(`(() => {
+    const row = document.querySelector('.thread');
+    if (!row) return { rows: 0 };
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 40 }));
+    const m = document.querySelector('.menu');
+    return {
+      rows: 1,
+      items: m ? [...m.querySelectorAll('button')].map((b) => b.textContent) : [],
+      onScreen: m ? (m.getBoundingClientRect().left >= 0 && m.getBoundingClientRect().top >= 0) : false,
+    };
+  })()`);
+  check('right-clicking a thread offers rename and delete',
+    menu.items && menu.items.includes('Rename') && menu.items.includes('Delete'),
+    JSON.stringify(menu));
+  check('the menu stays on screen', menu.onScreen);
+
+  // Renaming has to reach the store, not just the row.
+  const before = store.listThreads()[0];
+  await feed(`(() => {
+    document.querySelector('.menu button').click();
+    const input = document.querySelector('.thread__rename');
+    input.value = 'Renamed by smoke test';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  })()`);
+  await new Promise((r) => setTimeout(r, 400));
+  check('rename is persisted',
+    store.getThread(before.id).title === 'Renamed by smoke test',
+    store.getThread(before.id).title);
+
+  await feed("document.getElementById('toggle-threads').click()");
+
   // --- the overlay must not flicker --------------------------------------
   //
   // Capture used to hide the overlay and show it again, so the UI visibly
@@ -480,6 +526,18 @@ async function run() {
     check('arrow window is a small region, not the display', coverage < 0.15,
       `${ab.width}x${ab.height} = ${(coverage * 100).toFixed(1)}% of screen`);
   }
+
+  // The dismiss button is the only clickable thing on a click-through pane, so
+  // it has to actually be there and actually be wired.
+  const dismiss = await windows.arrow.webContents.executeJavaScript(`(() => {
+    const b = document.querySelector('.label__close');
+    if (!b) return { present: false };
+    b.click();
+    return { present: true };
+  })()`);
+  check('the indicator has a dismiss button', dismiss.present, JSON.stringify(dismiss));
+  await new Promise((r) => setTimeout(r, 300));
+  check('clicking dismiss hides the indicator', !windows.arrow.isVisible());
 
   windows.showArrow(null);
   check('arrow hides on clear', windows.arrow && !windows.arrow.isVisible());
