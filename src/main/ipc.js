@@ -8,7 +8,7 @@
  * preload bridges. Finding where a message was handled meant grepping.
  */
 
-const { ipcMain, shell, systemPreferences, desktopCapturer } = require('electron');
+const { app, ipcMain, shell, systemPreferences, desktopCapturer } = require('electron');
 const { providerOf } = require('./store');
 const { friendly } = require('./turn');
 
@@ -71,10 +71,18 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
   handle('hr:window:resize', (size) => { windows.resizeOverlay(size || {}); });
   handle('hr:window:drag', () => { /* handled natively by -webkit-app-region */ });
   handle('hr:window:close', () => { windows.hideOverlay(); });
+
   handle('hr:window:quit', () => {
-    const { app } = require('electron');
+    // Tear down before quitting. An arrow window outliving the app for even a
+    // frame leaves a mint stroke stranded on the user's screen.
+    turns.cancel();
+    windows.showArrow(null);
     app.quit();
   });
+
+  // Re-open onboarding to change the key. It is the only screen that ever
+  // handles a key in plain text, so there is no second place to maintain.
+  handle('hr:window:open-setup', () => { windows.showOnboarding(); });
 
   // --- setup --------------------------------------------------------------
 

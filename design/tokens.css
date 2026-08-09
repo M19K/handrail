@@ -197,7 +197,7 @@
   --panel-radius:    var(--radius-md);
   --panel-shadow:    var(--shadow-panel);
   --panel-max-width: 620px;
-  --panel-max-height: 460px;
+  --panel-max-height: 420px;
 
   /* --- Step list --- */
   --step-marker-size:   16px;

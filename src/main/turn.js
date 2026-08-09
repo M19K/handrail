@@ -13,7 +13,7 @@
  */
 
 const { captureDisplay, displayForWindow, captureMatchesDisplay } = require('./capture');
-const { parseBox, isBoxSane, boxToScreenRect } = require('./geometry');
+const { parseBox, isBoxSane, boxToScreenRect, arrowLayout } = require('./geometry');
 
 // --- watching parameters. See PRODUCT.md for the reasoning behind each. -----
 const QUIET_MS = 1200;        // screen must be still this long before checking
@@ -41,9 +41,20 @@ class TurnController {
 
   // --- lifecycle ----------------------------------------------------------
 
-  async ask({ text, capture }) {
+  /**
+   * `turnId` is minted by the RENDERER and passed in, not generated here.
+   *
+   * If main allocated it, the id would only reach the renderer in the reply to
+   * this call — and `_run` starts emitting immediately. A fast reply (a cached
+   * response, a stubbed model, a fast link) beats the IPC round trip, so
+   * `answer` and `done` arrive while the renderer still thinks no turn is in
+   * flight, get dropped as stale, and the bar spins forever with no way to ask
+   * anything else. Letting the renderer choose the id closes the window
+   * entirely rather than making it small.
+   */
+  async ask({ text, capture, turnId }) {
     this.cancel();                       // one turn at a time, always
-    const id = `turn_${++this.turnId}`;
+    const id = turnId || `turn_${++this.turnId}`;
     const turn = { id, cancelled: false };
     this.active = turn;
 
@@ -162,9 +173,17 @@ class TurnController {
       if (!isBoxSane(box)) return this.point(null);
 
       const rect = boxToScreenRect(box, task.display);
+
+      // The layout is computed here, in main, because it determines the size of
+      // the window the arrow is drawn in — and only main can size a window.
+      const layout = arrowLayout(rect.local, {
+        width: task.display.bounds.width,
+        height: task.display.bounds.height,
+      });
+
       this.point({
         display: task.display,
-        local: rect.local,
+        layout,
         label: found.label || step.target,
         instruction: step.text,
       });

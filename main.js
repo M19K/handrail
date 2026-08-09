@@ -19,8 +19,9 @@
 
 require('dotenv').config();
 
-const { app, globalShortcut, BrowserWindow } = require('electron');
+const { app, globalShortcut, BrowserWindow, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const { Store } = require('./src/main/store');
 const { Llm } = require('./src/main/llm');
@@ -42,7 +43,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 function main() {
-  let store, windows, turns, llm;
+  let store, windows, turns, llm, tray;
 
   app.on('second-instance', () => {
     if (windows) windows.toggleOverlay();
@@ -79,7 +80,50 @@ function main() {
     else windows.showOnboarding();
 
     registerShortcuts();
+    createTray();
   });
+
+  /**
+   * System tray.
+   *
+   * The overlay is frameless, has no menu bar and sets `skipTaskbar`, so before
+   * this existed the only way to quit was Task Manager. The bar has a visible
+   * quit button now, but that is no help when the overlay is hidden or the user
+   * has forgotten the shortcut — the tray is the thing you can always find.
+   */
+  function createTray() {
+    const iconPath = path.join(__dirname, 'build', 'icon-32.png');
+    const fallback = path.join(__dirname, 'icon.ico');   // packaged apps
+
+    let image = nativeImage.createFromPath(fs.existsSync(iconPath) ? iconPath : fallback);
+    if (image.isEmpty()) {
+      console.warn('[main] no tray icon found; tray not created');
+      return;
+    }
+    // macOS wants a template image so the tray icon follows the menu bar theme.
+    if (process.platform === 'darwin') image = image.resize({ width: 16, height: 16 });
+
+    tray = new Tray(image);
+    tray.setToolTip('Handrail');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Show Handrail', click: () => { launchOverlay(); windows.overlay.focus(); } },
+      { label: 'Hide', click: () => windows.hideOverlay() },
+      { type: 'separator' },
+      { label: 'Settings…', click: () => windows.showOnboarding() },
+      { type: 'separator' },
+      {
+        label: 'Quit Handrail',
+        click: () => {
+          if (turns) turns.cancel();
+          windows.showArrow(null);
+          app.quit();
+        },
+      },
+    ]));
+
+    // Clicking the icon itself is what most people try first.
+    tray.on('click', () => windows.toggleOverlay());
+  }
 
   function launchOverlay() {
     if (!windows.overlay) windows.createOverlay();

@@ -176,6 +176,136 @@ function boxToScreenRect(box, display) {
 }
 
 /**
+ * Arrow drawing constants. Here rather than in CSS because the WINDOW has to be
+ * sized around the result, and only the main process can do that.
+ */
+const ARROW = {
+  length: 150,   // tail-to-tip
+  tipGap: 14,    // never touch the control being pointed at
+  bow: 34,       // perpendicular offset of the curve's control point
+  head: 17,
+  spread: 0.42,  // radians, half-angle of the head
+};
+
+/** Space reserved for the instruction chip at the tail. Generous on purpose. */
+const LABEL = { width: 340, height: 104 };
+
+/** Breathing room so strokes and shadows are not clipped by the window edge. */
+const REGION_PAD = 24;
+
+/**
+ * Work out the arrow's shape AND the smallest window that can contain it.
+ *
+ * The window size is the point of this function. The arrow used to be drawn on
+ * a transparent pane covering the entire display, which means the compositor
+ * blends a full-screen layer on every frame — on integrated graphics that is
+ * enough to make the whole machine feel like it is dragging, which is exactly
+ * what happened. Covering ~400x300 instead of 2880x1800 is roughly a 40x
+ * reduction in blended area.
+ *
+ * All inputs and outputs are display-local DIP. `region` is where to put the
+ * window; `tip`, `tail` and `ctrl` are already relative to that region, so the
+ * renderer draws in its own coordinate space and knows nothing about displays.
+ */
+function arrowLayout(target, displaySize) {
+  const approach = chooseApproach(target, displaySize);
+  const cx = target.left + target.width / 2;
+  const cy = target.top + target.height / 2;
+
+  let tip;
+  let tail;
+  let bow;
+
+  switch (approach) {
+    case 'left':
+      tip = [target.left - ARROW.tipGap, cy];
+      tail = [tip[0] - ARROW.length, cy];
+      bow = [0, -ARROW.bow];
+      break;
+    case 'right':
+      tip = [target.left + target.width + ARROW.tipGap, cy];
+      tail = [tip[0] + ARROW.length, cy];
+      bow = [0, -ARROW.bow];
+      break;
+    case 'top':
+      tip = [cx, target.top - ARROW.tipGap];
+      tail = [cx, tip[1] - ARROW.length];
+      bow = [ARROW.bow, 0];
+      break;
+    default:
+      tip = [cx, target.top + target.height + ARROW.tipGap];
+      tail = [cx, tip[1] + ARROW.length];
+      bow = [ARROW.bow, 0];
+      break;
+  }
+
+  const ctrl = [(tip[0] + tail[0]) / 2 + bow[0], (tip[1] + tail[1]) / 2 + bow[1]];
+
+  // The label hangs off the tail, on the far side from the target.
+  const label = labelBox(tail, approach);
+
+  // Union of everything that gets drawn. The target itself is deliberately NOT
+  // included — nothing is drawn on it any more, and including it would inflate
+  // the window back toward full-screen for a control near a display edge.
+  const xs = [tip[0], tail[0], ctrl[0], label.left, label.left + label.width];
+  const ys = [tip[1], tail[1], ctrl[1], label.top, label.top + label.height];
+
+  let left = Math.min(...xs) - REGION_PAD;
+  let top = Math.min(...ys) - REGION_PAD;
+  let right = Math.max(...xs) + REGION_PAD;
+  let bottom = Math.max(...ys) + REGION_PAD;
+
+  // Clamp to the display. A window placed partly off-screen gets moved back by
+  // the OS, which would silently shift every coordinate inside it.
+  left = Math.max(0, Math.floor(left));
+  top = Math.max(0, Math.floor(top));
+  right = Math.min(displaySize.width, Math.ceil(right));
+  bottom = Math.min(displaySize.height, Math.ceil(bottom));
+
+  const region = { x: left, y: top, width: right - left, height: bottom - top };
+
+  return {
+    approach,
+    region,
+    tip: [tip[0] - left, tip[1] - top],
+    tail: [tail[0] - left, tail[1] - top],
+    ctrl: [ctrl[0] - left, ctrl[1] - top],
+    head: ARROW.head,
+    spread: ARROW.spread,
+  };
+}
+
+/**
+ * Which side to approach from — whichever has the most room.
+ *
+ * Otherwise the tail runs off the display, or the label lands on top of the
+ * very control it is describing.
+ */
+function chooseApproach(target, displaySize) {
+  const space = {
+    left: target.left,
+    right: displaySize.width - (target.left + target.width),
+    top: target.top,
+    bottom: displaySize.height - (target.top + target.height),
+  };
+  return Object.keys(space).reduce((a, b) => (space[b] > space[a] ? b : a));
+}
+
+/** Where the instruction chip sits relative to the tail, before clamping. */
+function labelBox(tail, approach) {
+  switch (approach) {
+    case 'left':
+      return { left: tail[0] - LABEL.width, top: tail[1] - LABEL.height / 2, ...LABEL };
+    case 'right':
+      return { left: tail[0], top: tail[1] - LABEL.height / 2, ...LABEL };
+    case 'top':
+      return { left: tail[0] - LABEL.width / 2, top: tail[1] - LABEL.height, ...LABEL };
+    default:
+      return { left: tail[0] - LABEL.width / 2, top: tail[1], ...LABEL };
+  }
+}
+
+/**
  * Pick the display an overlay window currently sits on.
  *
  * PRODUCT.md: capture happens on "whichever monitor the overlay is on". The
@@ -234,6 +364,10 @@ function nativeCaptureSize(display) {
 
 module.exports = {
   NORM_MAX,
+  ARROW,
+  LABEL,
+  arrowLayout,
+  chooseApproach,
   ASPECT_TOLERANCE,
   parseBox,
   isBoxSane,

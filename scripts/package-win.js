@@ -181,7 +181,10 @@ function build() {
       '--set-file-version', pkg.version,
       '--set-product-version', pkg.version,
       '--set-version-string', 'ProductName', 'Handrail',
-      '--set-version-string', 'FileDescription', pkg.description,
+      // Task Manager's "Name" column shows FileDescription, not ProductName.
+      // Putting the tagline here listed the app — and all four of its helper
+      // processes — as "A desktop overlay that sees yo…".
+      '--set-version-string', 'FileDescription', 'Handrail',
       '--set-version-string', 'CompanyName', String((pkg.author && pkg.author.name) || 'Handrail'),
       '--set-version-string', 'LegalCopyright', 'Apache-2.0',
       '--set-version-string', 'OriginalFilename', 'Handrail.exe',

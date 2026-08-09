@@ -22,10 +22,23 @@ const { Store } = require('../src/main/store');
 const { Llm } = require('../src/main/llm');
 const { Windows } = require('../src/main/windows');
 const { TurnController } = require('../src/main/turn');
+const { arrowLayout } = require('../src/main/geometry');
 const ipc = require('../src/main/ipc');
 
 const OUT = path.join(os.tmpdir(), 'handrail-smoke');
 const failures = [];
+
+/**
+ * Run against a throwaway userData directory.
+ *
+ * The store writes settings, threads and the key to real files. Without this
+ * the smoke test mutates the installed app's settings — and worse, it then
+ * passes or fails depending on what a previous run left behind, which is how a
+ * test starts lying to you. Must be set before `whenReady`.
+ */
+const SANDBOX = path.join(os.tmpdir(), 'handrail-smoke-data');
+fs.rmSync(SANDBOX, { recursive: true, force: true });
+app.setPath('userData', SANDBOX);
 
 function check(name, condition, detail) {
   if (condition) console.log(`  ok    ${name}`);
@@ -182,25 +195,111 @@ async function run() {
   check('no overlay renderer errors', (await errorsIn(overlay)).length === 0,
     JSON.stringify(await errorsIn(overlay)));
 
+  // --- the transcript ----------------------------------------------------
+  //
+  // Driven by pushing hr:turn events straight at the real renderer, so this
+  // exercises the shipping code rather than the mock bridge. The panel has to
+  // ACCUMULATE: the first build replaced its contents every turn, so you could
+  // never see what you had asked or scroll back to compare answers.
+  console.log('\ntranscript');
+
+  const feed = async (js) => overlay.webContents.executeJavaScript(js);
+  const submit = async (text) => {
+    await feed(`
+      document.getElementById('input').value = ${JSON.stringify(text)};
+      document.getElementById('bar').dispatchEvent(new Event('submit', { cancelable: true }));
+    `);
+    await new Promise((r) => setTimeout(r, 900));
+  };
+
+  // Only the network is stubbed. Capture is off, so no screenshot is taken and
+  // no key is needed, but the turn controller, the IPC contract and the
+  // renderer are all the real ones.
+  await store.setSettings({ capture: false, pointing: false, watching: false });
+  await feed("document.getElementById('toggle-capture').click()");
+
+  llm.respond = async ({ prompt }) => (
+    /how do i|add /i.test(prompt)
+      ? {
+          kind: 'task',
+          title: 'Add a cross dissolve between two clips',
+          steps: [
+            { text: 'Open the Effects panel from the Window menu.', hint: '', doneWhen: '', target: '' },
+            { text: 'Select the Razor tool in the toolbar on the left.', hint: '', doneWhen: '', target: '' },
+            { text: 'Cut both clips where they should overlap.', hint: '', doneWhen: '', target: '' },
+            { text: 'Drag Cross Dissolve onto the join.', hint: 'Video Transitions → Dissolve.', doneWhen: '', target: '' },
+          ],
+        }
+      : {
+          kind: 'answer',
+          markdown: "That red bar means Premiere hasn't rendered a preview yet, so playback "
+            + "will stutter. It isn't an error.\n\nPress **Enter** with the timeline focused "
+            + 'and it will render.',
+        }
+  );
+
+  await submit('what is this red bar under my timeline?');
+  await submit('how do I add a cross dissolve?');
+  await shoot(overlay, '8-transcript');
+
+  const counts = await feed(`({
+    user: document.querySelectorAll('.msg--user').length,
+    assistant: document.querySelectorAll('.msg--assistant').length,
+    steps: document.querySelectorAll('.step').length,
+    scrollable: document.getElementById('panel-body').scrollHeight >
+                document.getElementById('panel-body').clientHeight,
+    firstPromptStillThere: document.body.textContent.includes('red bar under my timeline'),
+  })`);
+
+  check('both prompts kept in the transcript', counts.user === 2, `${counts.user} user messages`);
+  check('both replies kept', counts.assistant === 2, `${counts.assistant} replies`);
+  check('the first question is still readable', counts.firstPromptStillThere);
+  check('checklist rendered inside the transcript', counts.steps === 4, `${counts.steps} steps`);
+
   // --- arrow -------------------------------------------------------------
   console.log('\narrow window');
   const display = screen.getPrimaryDisplay();
+  const target = {
+    left: display.bounds.width * 0.62,
+    top: display.bounds.height * 0.42,
+    width: 110,
+    height: 32,
+  };
+  const layout = arrowLayout(target, display.bounds);
+
   windows.showArrow({
     display,
-    local: { left: display.bounds.width * 0.62, top: display.bounds.height * 0.42, width: 110, height: 32 },
+    layout,
     label: 'Razor tool',
     instruction: 'Select the Razor tool in the toolbar on the left.',
   });
   await new Promise((r) => setTimeout(r, 800));
   check('arrow window created', !!windows.arrow && !windows.arrow.isDestroyed());
+
   if (windows.arrow) {
     await shoot(windows.arrow, '7-arrow');
+
     const drawn = await windows.arrow.webContents.executeJavaScript(
       "document.querySelectorAll('#stage svg path').length");
     check('arrow geometry drawn', drawn >= 4, `${drawn} paths`);
+
     const labelled = await windows.arrow.webContents.executeJavaScript(
       "!!document.querySelector('#stage .label')");
     check('arrow label placed', labelled);
+
+    // Nothing may be drawn on top of the control itself. The ring used to be,
+    // and it competed with the very thing the user was told to click.
+    const rings = await windows.arrow.webContents.executeJavaScript(
+      "document.querySelectorAll('#stage svg rect').length");
+    check('no ring drawn over the control', rings === 0, `${rings} rects`);
+
+    // The window covering the whole display is what made the machine feel
+    // slow. Guard the size, not just the drawing.
+    const ab = windows.arrow.getBounds();
+    const coverage = (ab.width * ab.height) /
+      (display.bounds.width * display.bounds.height);
+    check('arrow window is a small region, not the display', coverage < 0.15,
+      `${ab.width}x${ab.height} = ${(coverage * 100).toFixed(1)}% of screen`);
   }
 
   windows.showArrow(null);

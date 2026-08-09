@@ -8,6 +8,11 @@
  * main process; this file renders what it is told and reports what the user
  * did. Every event arrives on one stream (`handrail.onTurn`) and is handled by
  * one switch — see docs/IPC.md.
+ *
+ * The panel is a TRANSCRIPT, not a single answer. Each prompt stays on screen
+ * above its reply and the list scrolls. The first build replaced the panel's
+ * contents on every turn, which meant you could never see what you had asked,
+ * never scroll back, and never compare an answer to the one before it.
  */
 
 'use strict';
@@ -23,7 +28,6 @@ const $ = (id) => document.getElementById(id);
 const el = {
   app: $('app'),
   pill: $('pill'),
-  pillGrip: $('pill-grip'),
   dock: $('dock'),
   bar: $('bar'),
   grip: $('grip'),
@@ -34,16 +38,13 @@ const el = {
   toggleCapture: $('toggle-capture'),
   toggleThreads: $('toggle-threads'),
   toggleSettings: $('toggle-settings'),
+  quit: $('quit'),
   panel: $('panel'),
-  panelKind: $('panel-kind'),
   panelTitle: $('panel-title'),
   panelProgress: $('panel-progress'),
   panelClose: $('panel-close'),
-  prose: $('answer-prose'),
-  steps: $('answer-steps'),
-  errorBox: $('answer-error'),
-  errorText: $('error-text'),
-  errorRetry: $('error-retry'),
+  panelClear: $('panel-clear'),
+  body: $('panel-body'),
   panelThreads: $('panel-threads'),
   panelSettings: $('panel-settings'),
   threadList: $('thread-list'),
@@ -54,17 +55,14 @@ const el = {
 
 // ---------------------------------------------------------------------------
 // State
-//
-// Small and explicit. Everything the renderer needs to decide what to paint,
-// and nothing that main is authoritative about.
 // ---------------------------------------------------------------------------
 
 const state = {
   view: 'bar',            // 'collapsed' | 'bar' | 'answer'
   turnId: null,           // in-flight turn, or null
   lastPrompt: '',         // for retry
-  kind: null,             // 'answer' | 'task' | 'error'
-  task: null,             // { taskId, title, steps: [{ text, hint, status }] }
+  messages: [],           // the transcript. { id, role, kind, node, ... }
+  task: null,             // the live task, if the last reply was one
   pointingAt: null,       // index of the step currently carrying the arrow
   threads: [],
   threadFilter: '',
@@ -72,6 +70,9 @@ const state = {
   settings: { capture: true, pointing: true, stealth: true, keyHint: '' },
   panel: null,            // 'threads' | 'settings' | null — one at a time
 };
+
+let messageSeq = 0;
+let turnSeq = 0;
 
 // ---------------------------------------------------------------------------
 // View
@@ -131,31 +132,112 @@ function scheduleResize() {
   });
 }
 
+/**
+ * Follow the conversation only if the user is already at the bottom.
+ *
+ * Yanking someone back down while they are reading earlier messages is the
+ * single most irritating thing a chat transcript can do.
+ */
+function isNearBottom() {
+  const gap = el.body.scrollHeight - el.body.scrollTop - el.body.clientHeight;
+  return gap < 48;
+}
+
+function followIfAtBottom(wasAtBottom) {
+  if (wasAtBottom) el.body.scrollTop = el.body.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// Transcript
+// ---------------------------------------------------------------------------
+
+function appendMessage(message) {
+  const wasAtBottom = isNearBottom();
+
+  message.id = `m${++messageSeq}`;
+  state.messages.push(message);
+  el.body.append(message.node);
+
+  followIfAtBottom(wasAtBottom || message.role === 'user');
+  scheduleResize();
+  return message;
+}
+
+function addUserMessage(text) {
+  const node = document.createElement('div');
+  node.className = 'msg msg--user';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  node.append(bubble);
+
+  return appendMessage({ role: 'user', kind: 'text', node, text });
+}
+
+/** The assistant's slot for this turn, created empty and filled as events land. */
+function addAssistantMessage() {
+  const node = document.createElement('div');
+  node.className = 'msg msg--assistant';
+
+  const content = document.createElement('div');
+  content.className = 'msg__content';
+  node.append(content);
+
+  return appendMessage({ role: 'assistant', kind: null, node, content, text: '' });
+}
+
+/** The assistant message currently being written into, if any. */
+function currentAssistant() {
+  for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+    const m = state.messages[i];
+    if (m.role === 'assistant') return m;
+  }
+  return null;
+}
+
+function clearTranscript() {
+  state.messages = [];
+  state.task = null;
+  state.pointingAt = null;
+  el.body.replaceChildren();
+  el.panelProgress.hidden = true;
+  scheduleResize();
+}
+
 // ---------------------------------------------------------------------------
 // Turn lifecycle
 // ---------------------------------------------------------------------------
 
 async function ask(text) {
-  const prompt = text.trim();
+  const prompt = String(text || '').trim();
   if (!prompt || state.turnId) return;
 
   state.lastPrompt = prompt;
   el.input.value = '';
-  el.input.blur();
+
+  // Asking is a request to see an answer. Any side panel that happens to be
+  // open is in the way of that, so it closes.
+  if (state.panel) setPanel(null);
+
+  addUserMessage(prompt);
+  addAssistantMessage();
 
   showBusy('thinking');
-  resetPanelContent();
-
-  el.panelKind.textContent = 'Working';
-  el.panelTitle.textContent = prompt;
-  el.panelProgress.hidden = true;
   setView('answer');
 
+  // The id is minted HERE and set before the call, not taken from the reply.
+  // Main starts emitting the moment it is asked, and a fast answer beats the
+  // IPC round trip — so an id that only arrives in the reply means `answer` and
+  // `done` land while state.turnId is still null, get dropped as stale, and the
+  // bar spins forever with no way to ask anything else.
+  const turnId = `t${Date.now().toString(36)}${++turnSeq}`;
+  state.turnId = turnId;
+
   try {
-    const { turnId } = await bridge.ask({ text: prompt, capture: state.settings.capture });
-    state.turnId = turnId;
+    await bridge.ask({ text: prompt, capture: state.settings.capture, turnId });
   } catch (err) {
-    showError(err && err.message ? err.message : 'Could not reach Handrail.', true);
+    showError((err && err.message) || 'Could not reach Handrail.', true);
   }
 }
 
@@ -164,22 +246,20 @@ function showBusy(mode) {
   el.tools.hidden = mode !== null;
   el.captureFlash.hidden = mode !== 'capture';
   el.thinking.hidden = mode !== 'thinking';
-  if (mode === null) el.tools.hidden = false;
-}
-
-function resetPanelContent() {
-  el.prose.hidden = true;
-  el.prose.textContent = '';
-  el.steps.hidden = true;
-  el.steps.replaceChildren();
-  el.errorBox.hidden = true;
-  state.task = null;
-  state.pointingAt = null;
 }
 
 function endTurn() {
   state.turnId = null;
   showBusy(null);
+
+  // An assistant slot that never received anything would sit in the transcript
+  // as an empty gap.
+  const last = currentAssistant();
+  if (last && !last.kind) {
+    last.node.remove();
+    state.messages = state.messages.filter((m) => m !== last);
+  }
+
   scheduleResize();
 }
 
@@ -209,21 +289,29 @@ bridge.onTurn((event) => {
       showBusy('thinking');
       break;
 
-    case 'chunk':
-      state.kind = 'answer';
-      el.panelKind.textContent = 'Answer';
-      el.prose.hidden = false;
-      el.prose.textContent += event.text;
+    case 'chunk': {
+      const msg = currentAssistant();
+      if (!msg) break;
+      const wasAtBottom = isNearBottom();
+      msg.kind = 'text';
+      msg.text += event.text;
+      renderProse(msg.content, msg.text);
+      followIfAtBottom(wasAtBottom);
       scheduleResize();
       break;
+    }
 
-    case 'answer':
-      state.kind = 'answer';
-      el.panelKind.textContent = 'Answer';
-      el.prose.hidden = false;
-      renderProse(event.markdown);
+    case 'answer': {
+      const msg = currentAssistant();
+      if (!msg) break;
+      const wasAtBottom = isNearBottom();
+      msg.kind = 'text';
+      msg.text = event.markdown;
+      renderProse(msg.content, msg.text);
+      followIfAtBottom(wasAtBottom);
       scheduleResize();
       break;
+    }
 
     case 'task':
       renderTask(event);
@@ -236,7 +324,7 @@ bridge.onTurn((event) => {
     case 'point':
       // The arrow is drawn by main in its own window; the renderer only
       // reflects which step is carrying it.
-      state.pointingAt = event.rect ? state.task && state.task.activeIndex : null;
+      state.pointingAt = event.rect && state.task ? state.task.activeIndex : null;
       if (state.task) renderSteps();
       break;
 
@@ -262,23 +350,22 @@ bridge.onTurn((event) => {
  * remote script anyway. Everything is built with createElement and textContent
  * so no model output can ever reach innerHTML.
  */
-function renderProse(markdown) {
-  el.prose.replaceChildren();
-  const blocks = String(markdown || '').split(/\n{2,}/);
+function renderProse(target, markdown) {
+  target.replaceChildren();
+  target.className = 'msg__content prose';
 
-  for (const block of blocks) {
+  for (const block of String(markdown || '').split(/\n{2,}/)) {
     const fence = block.match(/^```[a-z]*\n([\s\S]*?)\n?```$/i);
     if (fence) {
       const pre = document.createElement('pre');
       pre.textContent = fence[1];
-      el.prose.append(pre);
+      target.append(pre);
       continue;
     }
 
     const p = document.createElement('p');
     // Split on inline code and bold, keeping the delimiters.
-    const parts = block.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
-    for (const part of parts) {
+    for (const part of block.split(/(`[^`]+`|\*\*[^*]+\*\*)/g)) {
       if (!part) continue;
       if (part.startsWith('`') && part.endsWith('`')) {
         const code = document.createElement('code');
@@ -292,16 +379,32 @@ function renderProse(markdown) {
         p.append(document.createTextNode(part));
       }
     }
-    el.prose.append(p);
+    target.append(p);
   }
 }
 
 function renderTask(event) {
-  state.kind = 'task';
+  const msg = currentAssistant();
+  if (!msg) return;
+
+  msg.kind = 'task';
+  msg.content.className = 'msg__content';
+  msg.content.replaceChildren();
+
+  const title = document.createElement('p');
+  title.className = 'task__title';
+  title.textContent = event.title;
+
+  const list = document.createElement('div');
+  list.className = 'steps';
+
+  msg.content.append(title, list);
+
   state.task = {
     taskId: event.taskId,
     title: event.title,
     activeIndex: 0,
+    list,
     steps: event.steps.map((s, i) => ({
       text: s.text,
       hint: s.hint || '',
@@ -310,10 +413,7 @@ function renderTask(event) {
     })),
   };
 
-  el.panelKind.hidden = true;
   el.panelTitle.textContent = event.title;
-  el.prose.hidden = true;
-  el.steps.hidden = false;
   renderSteps();
 }
 
@@ -348,7 +448,9 @@ function renderSteps() {
   const task = state.task;
   if (!task) return;
 
+  const wasAtBottom = isNearBottom();
   const done = task.steps.filter((s) => s.status === 'done').length;
+
   el.panelProgress.hidden = false;
   el.panelProgress.textContent = `${Math.min(done + 1, task.steps.length)} / ${task.steps.length}`;
 
@@ -366,11 +468,8 @@ function renderSteps() {
 
     const mark = document.createElement('span');
     mark.className = 'step__mark';
-    if (step.status === 'done') {
-      mark.append(icon('M5 13l4 4L19 7', 3.4));
-    } else {
-      mark.textContent = String(i + 1);
-    }
+    if (step.status === 'done') mark.append(icon('M5 13l4 4L19 7', 3.4));
+    else mark.textContent = String(i + 1);
 
     const body = document.createElement('div');
 
@@ -389,7 +488,8 @@ function renderSteps() {
     if (step.status === 'active' && state.settings.pointing && state.pointingAt === i) {
       const pointing = document.createElement('span');
       pointing.className = 'step__pointing';
-      pointing.append(icon('M5 12h13M12 5l7 7-7 7', 2.6), document.createTextNode('Pointing at it on your screen'));
+      pointing.append(icon('M5 12h13M12 5l7 7-7 7', 2.6),
+        document.createTextNode('Pointing at it on your screen'));
       body.append(pointing);
     }
 
@@ -404,7 +504,8 @@ function renderSteps() {
     frag.append(row);
   });
 
-  el.steps.replaceChildren(frag);
+  task.list.replaceChildren(frag);
+  followIfAtBottom(wasAtBottom);
   scheduleResize();
 }
 
@@ -429,24 +530,54 @@ function icon(d, width) {
 function toggleStep(index) {
   const task = state.task;
   if (!task) return;
-  const step = task.steps[index];
-  if (step.status === 'done') bridge.reopenStep(task.taskId, index);
+  if (task.steps[index].status === 'done') bridge.reopenStep(task.taskId, index);
   else bridge.completeStep(task.taskId, index);
 }
 
+/** Errors are messages in the transcript too — they belong to a prompt. */
 function showError(message, recoverable) {
-  state.kind = 'error';
-  resetPanelContent();
-  el.panelKind.hidden = false;
-  el.panelKind.textContent = 'Problem';
-  el.errorBox.hidden = false;
-  el.errorText.replaceChildren();
+  const msg = currentAssistant() || addAssistantMessage();
+  msg.kind = 'error';
+  msg.content.className = 'msg__content';
+  msg.content.replaceChildren();
 
+  const box = document.createElement('div');
+  box.className = 'error';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  const circle = document.createElementNS(NS, 'circle');
+  circle.setAttribute('cx', '12'); circle.setAttribute('cy', '12'); circle.setAttribute('r', '9');
+  circle.setAttribute('stroke', 'currentColor'); circle.setAttribute('stroke-width', '1.8');
+  const bang = document.createElementNS(NS, 'path');
+  bang.setAttribute('d', 'M12 7.5v5.5M12 16.2v.6');
+  bang.setAttribute('stroke', 'currentColor'); bang.setAttribute('stroke-width', '2');
+  bang.setAttribute('stroke-linecap', 'round');
+  svg.append(circle, bang);
+
+  const text = document.createElement('p');
+  text.className = 'error__text';
   const head = document.createElement('b');
   head.textContent = 'That didn’t work';
-  el.errorText.append(head, document.createTextNode(message));
+  text.append(head, document.createTextNode(message));
 
-  el.errorRetry.hidden = !recoverable;
+  box.append(svg, text);
+
+  if (recoverable) {
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'error__retry';
+    retry.textContent = 'Try again';
+    retry.addEventListener('click', () => ask(state.lastPrompt));
+    box.append(retry);
+  }
+
+  msg.content.append(box);
   setView('answer');
   endTurn();
 }
@@ -528,7 +659,22 @@ function relativeTime(ts) {
 
 async function openThread(id) {
   state.openThreadId = id;
-  await bridge.threads.open(id);
+  const thread = await bridge.threads.open(id);
+  clearTranscript();
+
+  // Replay what was said. Only the prompt and a summary are stored, so an
+  // opened thread reads as history rather than as a live conversation — which
+  // is honest about what it is.
+  for (const turn of (thread && thread.turns) || []) {
+    addUserMessage(turn.prompt);
+    const msg = addAssistantMessage();
+    msg.kind = 'text';
+    msg.text = turn.summary || '';
+    renderProse(msg.content, msg.text);
+  }
+
+  el.panelTitle.textContent = (thread && thread.title) || 'Handrail';
+  if (state.messages.length) setView('answer');
   renderThreads();
 }
 
@@ -541,9 +687,10 @@ async function openThread(id) {
 // ---------------------------------------------------------------------------
 
 const SETTING_ROWS = [
-  { key: 'capture',  label: 'Capture my screen',        note: 'Every question includes a screenshot' },
-  { key: 'pointing', label: 'Point at things on screen', note: 'Draw an arrow at the control to use' },
-  { key: 'stealth',  label: 'Hide from screen sharing',  note: "Handrail won't appear in calls or recordings" },
+  { key: 'capture',  label: 'Capture my screen',         note: 'Every question includes a screenshot' },
+  { key: 'pointing', label: 'Point at things on screen',  note: 'Draw an arrow at the control to use' },
+  { key: 'watching', label: 'Watch for finished steps',   note: 'Tick steps off by looking at your screen' },
+  { key: 'stealth',  label: 'Hide from screen sharing',   note: "Handrail won't appear in calls or recordings" },
 ];
 
 async function refreshSettings() {
@@ -595,6 +742,7 @@ function renderSettings() {
   change.type = 'button';
   change.className = 'chip chip--quiet';
   change.textContent = 'Change';
+  change.addEventListener('click', () => bridge.window.openSetup());
 
   keyRow.append(keyLabel, change);
   frag.append(keyRow);
@@ -623,10 +771,20 @@ el.pill.addEventListener('click', () => setView('bar'));
 el.panelClose.addEventListener('click', () => {
   if (state.turnId) bridge.cancel(state.turnId);
   endTurn();
-  resetPanelContent();
-  el.panelKind.hidden = false;
   setView('bar');
 });
+
+el.panelClear.addEventListener('click', async () => {
+  if (state.turnId) bridge.cancel(state.turnId);
+  endTurn();
+  const { id } = await bridge.threads.create();
+  state.openThreadId = id;
+  clearTranscript();
+  el.panelTitle.textContent = 'Handrail';
+  setView('bar');
+});
+
+el.quit.addEventListener('click', () => bridge.window.quit());
 
 el.toggleCapture.addEventListener('click', () => updateSetting('capture', !state.settings.capture));
 el.toggleThreads.addEventListener('click', () => setPanel('threads'));
@@ -639,11 +797,10 @@ el.threadSearch.addEventListener('input', () => {
 el.threadNew.addEventListener('click', async () => {
   const { id } = await bridge.threads.create();
   state.openThreadId = id;
+  clearTranscript();
   await refreshThreads();
   setView('bar');
 });
-
-el.errorRetry.addEventListener('click', () => ask(state.lastPrompt));
 
 // Drag. `-webkit-app-region: drag` handles this natively on both platforms and
 // costs nothing; beginDrag() is the fallback for the frameless-window edge
@@ -651,20 +808,18 @@ el.errorRetry.addEventListener('click', () => ask(state.lastPrompt));
 el.grip.addEventListener('mousedown', () => bridge.window.beginDrag());
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    if (state.panel) return setPanel(null);
-    if (state.turnId) {
-      bridge.cancel(state.turnId);
-      endTurn();
-      return;
-    }
-    if (state.view === 'answer') {
-      resetPanelContent();
-      el.panelKind.hidden = false;
-      return setView('bar');
-    }
-    setView('collapsed');
+  if (e.key !== 'Escape') return;
+
+  // Least destructive thing first. Escape should never be the key that loses
+  // someone's conversation.
+  if (state.panel) return setPanel(null);
+  if (state.turnId) {
+    bridge.cancel(state.turnId);
+    endTurn();
+    return;
   }
+  if (state.view === 'answer') return setView('bar');
+  setView('collapsed');
 });
 
 // ---------------------------------------------------------------------------

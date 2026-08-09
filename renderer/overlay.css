@@ -235,8 +235,11 @@ button {
 }
 .panel__body {
   padding: var(--space-1) var(--space-4) var(--space-3);
+  /* Scrolls. A transcript that cannot be scrolled back through is a transcript
+     that has thrown away everything but the last thing said. */
   max-height: var(--panel-max-height);
   overflow-y: auto;
+  overscroll-behavior: contain;
   user-select: text;
   cursor: auto;
 }
@@ -275,6 +278,46 @@ button {
               background var(--dur-fast) var(--ease-out);
 }
 .icon-btn:hover { color: var(--text-primary); background: var(--surface-hover); }
+
+/* ----------------------------------------------------------------------------
+   Transcript
+
+   A running conversation, not a single answer. The body scrolls; the window
+   stops growing once the body hits its max height, so a long thread never
+   pushes the overlay off the screen.
+   -------------------------------------------------------------------------- */
+.msg { display: flex; flex-direction: column; padding: var(--space-2) 0; }
+.msg + .msg { padding-top: var(--space-1); }
+
+/* The user's own words, right-aligned and boxed. Distinguishing the two sides
+   by SHAPE rather than only by colour keeps the transcript readable at a
+   glance, and survives the accent being turned down. */
+.msg--user { align-items: flex-end; }
+.msg--user .bubble {
+  max-width: 82%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The assistant runs full width and unboxed. Instructions are the thing being
+   read; a bubble around them would only narrow the measure. */
+.msg--assistant { align-items: stretch; }
+.msg__content { min-width: 0; }
+
+.task__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+}
 
 /* --- prose --- */
 .prose { font-size: var(--text-md); line-height: var(--leading-body); color: var(--text-secondary); }
@@ -553,3 +596,10 @@ button {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-placeholder); }
+
+/* Quit sits apart from the other tools: it ends the session rather than
+   changing something inside it, and it turns red only on approach. */
+.tool--quit:hover {
+  color: var(--danger-500);
+  background: rgba(255, 107, 91, 0.12);
+}

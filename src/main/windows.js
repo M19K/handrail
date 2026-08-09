@@ -29,6 +29,15 @@ const RENDERER = path.join(ROOT, 'renderer');
  */
 const STEALTH_DEFAULT = process.env.STEALTH_MODE !== 'false';
 
+/**
+ * How long an arrow stays before removing itself.
+ *
+ * Long enough to find the control it points at, short enough that it does not
+ * become permanent furniture on the user's screen. The step it belongs to stays
+ * highlighted in the overlay either way, so nothing is lost when it goes.
+ */
+const ARROW_DWELL_MS = 14000;
+
 class Windows {
   constructor(store) {
     this.store = store;
@@ -166,12 +175,24 @@ class Windows {
    * cover, rather than one per screen — there is only ever one arrow.
    */
   showArrow(payload) {
+    clearTimeout(this._arrowTimer);
+
     if (!payload) {
       if (this.arrow && !this.arrow.isDestroyed()) this.arrow.hide();
       return;
     }
 
-    const b = payload.display.bounds;
+    // The window covers only the arrow and its label, not the display. A
+    // full-screen transparent always-on-top layer has to be recomposited
+    // continuously, and on integrated graphics that alone makes the whole
+    // machine feel like it is dragging. See geometry.js § arrowLayout.
+    const region = payload.layout.region;
+    const b = {
+      x: payload.display.bounds.x + region.x,
+      y: payload.display.bounds.y + region.y,
+      width: region.width,
+      height: region.height,
+    };
 
     if (!this.arrow || this.arrow.isDestroyed()) {
       this.arrow = new BrowserWindow({
@@ -193,7 +214,13 @@ class Windows {
       this.arrow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
       // The arrow points at a real control, so the user must be able to click
       // that control straight through it.
-      this.arrow.setIgnoreMouseEvents(true, { forward: true });
+      //
+      // Deliberately WITHOUT `forward: true`. Forwarding makes Chromium
+      // synthesise and dispatch a mouse event into this window for every single
+      // cursor movement anywhere it covers — which was the single biggest cause
+      // of the lag users felt while an arrow was on screen. Nothing in here
+      // reacts to the mouse, so there is nothing to forward.
+      this.arrow.setIgnoreMouseEvents(true);
       this.arrow.loadFile(path.join(RENDERER, 'arrow.html'));
       this.arrow.on('closed', () => { this.arrow = null; });
       this.applyStealth(this.store.getSettings().stealth);
@@ -213,6 +240,14 @@ class Windows {
 
     if (this.arrow.webContents.isLoading()) this.arrow.webContents.once('did-finish-load', send);
     else send();
+
+    // Take itself away. Guidance that has been read becomes clutter, and the
+    // arrow has no clickable dismiss of its own precisely because it must stay
+    // click-through — the user has to be able to click what it points at. The
+    // step's own controls in the overlay remain the explicit way to stop it.
+    this._arrowTimer = setTimeout(() => {
+      if (this.arrow && !this.arrow.isDestroyed()) this.arrow.hide();
+    }, ARROW_DWELL_MS);
   }
 
   // --- onboarding ---------------------------------------------------------

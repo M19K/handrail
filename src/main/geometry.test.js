@@ -166,3 +166,84 @@ test('nativeCaptureSize multiplies DIP size back up to physical pixels', () => {
   assert.deepEqual(nativeCaptureSize(PRIMARY_1X), { width: 1920, height: 1080 });
   assert.deepEqual(nativeCaptureSize(SECOND_1_5X), { width: 3840, height: 2160 });
 });
+
+// ---------------------------------------------------------------------------
+// arrowLayout — the fix for the arrow making the whole machine feel slow.
+//
+// The window used to cover the entire display, which meant the compositor
+// blended a full-screen always-on-top layer continuously. These tests exist to
+// stop that regressing: if `region` ever creeps back toward display size, the
+// lag comes back and nothing else would catch it.
+// ---------------------------------------------------------------------------
+
+const { arrowLayout, chooseApproach } = require('./geometry');
+
+const SCREEN = { width: 1920, height: 1080 };
+
+test('arrowLayout covers a small fraction of the display', () => {
+  const target = { left: 900, top: 500, width: 40, height: 24 };
+  const { region } = arrowLayout(target, SCREEN);
+
+  const coverage = (region.width * region.height) / (SCREEN.width * SCREEN.height);
+  assert.ok(coverage < 0.12, `region covers ${(coverage * 100).toFixed(1)}% of the display`);
+});
+
+test('arrowLayout stays inside the display for a target in each corner', () => {
+  const corners = [
+    { left: 4, top: 4, width: 30, height: 24 },
+    { left: SCREEN.width - 34, top: 4, width: 30, height: 24 },
+    { left: 4, top: SCREEN.height - 28, width: 30, height: 24 },
+    { left: SCREEN.width - 34, top: SCREEN.height - 28, width: 30, height: 24 },
+  ];
+
+  for (const target of corners) {
+    const { region } = arrowLayout(target, SCREEN);
+    assert.ok(region.x >= 0 && region.y >= 0, `region origin negative: ${JSON.stringify(region)}`);
+    assert.ok(region.x + region.width <= SCREEN.width, 'region runs off the right edge');
+    assert.ok(region.y + region.height <= SCREEN.height, 'region runs off the bottom edge');
+    assert.ok(region.width > 0 && region.height > 0, 'region collapsed');
+  }
+});
+
+test('arrowLayout returns coordinates relative to its own region', () => {
+  // The renderer draws in window space and knows nothing about displays, so
+  // every point must land inside the region it was given.
+  const target = { left: 1400, top: 700, width: 60, height: 30 };
+  const { region, tip, tail, ctrl } = arrowLayout(target, SCREEN);
+
+  for (const [name, p] of [['tip', tip], ['tail', tail], ['ctrl', ctrl]]) {
+    assert.ok(p[0] >= 0 && p[0] <= region.width, `${name} x=${p[0]} outside region width ${region.width}`);
+    assert.ok(p[1] >= 0 && p[1] <= region.height, `${name} y=${p[1]} outside region height ${region.height}`);
+  }
+});
+
+test('arrowLayout tip stops short of the control and never covers it', () => {
+  // A tip resting on the target reads as covering the thing the user has just
+  // been told to click.
+  const target = { left: 1200, top: 500, width: 40, height: 24 };
+  const { region, tip, approach } = arrowLayout(target, SCREEN);
+
+  const tipScreenX = tip[0] + region.x;
+  const tipScreenY = tip[1] + region.y;
+  const insideX = tipScreenX > target.left && tipScreenX < target.left + target.width;
+  const insideY = tipScreenY > target.top && tipScreenY < target.top + target.height;
+
+  assert.ok(!(insideX && insideY), `tip landed inside the target (approach: ${approach})`);
+});
+
+test('chooseApproach picks the side with the most room', () => {
+  assert.equal(chooseApproach({ left: 1700, top: 500, width: 40, height: 24 }, SCREEN), 'left');
+  assert.equal(chooseApproach({ left: 40, top: 500, width: 40, height: 24 }, SCREEN), 'right');
+  assert.equal(chooseApproach({ left: 900, top: 40, width: 40, height: 24 }, SCREEN), 'bottom');
+  assert.equal(chooseApproach({ left: 900, top: 1000, width: 40, height: 24 }, SCREEN), 'top');
+});
+
+test('arrowLayout handles a scaled display the same as an unscaled one', () => {
+  // Everything here is DIP, so a 2x panel presenting as 1440x900 must produce
+  // the same shape as any other 1440x900 display. scaleFactor never enters.
+  const small = { width: 1440, height: 900 };
+  const target = { left: 700, top: 400, width: 40, height: 24 };
+  const { region } = arrowLayout(target, small);
+  assert.ok(region.width < small.width * 0.6, 'region too wide for a smaller display');
+  assert.ok(region.height < small.height * 0.6, 'region too tall for a smaller display');
+});

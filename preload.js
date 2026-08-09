@@ -73,6 +73,7 @@ contextBridge.exposeInMainWorld('handrail', {
     beginDrag: () => call('hr:window:drag'),
     close: () => call('hr:window:close'),
     quit: () => call('hr:window:quit'),
+    openSetup: () => call('hr:window:open-setup'),
   },
 
   // --- setup (onboarding window only) -------------------------------------

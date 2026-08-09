@@ -35,9 +35,14 @@ is an overlay that is hard to break.
 ### Turns
 
 ```js
-handrail.ask({ text, capture })        // -> { turnId }
+handrail.ask({ text, capture, turnId }) // -> { turnId }
 handrail.cancel(turnId)                // -> void
 ```
+
+The renderer mints `turnId` and must set its own in-flight id **before**
+calling. Main starts emitting immediately, and a fast answer beats the IPC
+round trip — an id that only arrived in the reply would cause  and
+ to be dropped as stale, leaving the bar spinning forever.
 
 `capture` defaults to the user's setting. A turn is the entire unit of work:
 capture, classify, answer or plan, and any subsequent step-watching.

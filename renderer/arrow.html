@@ -20,24 +20,11 @@
   }
   #stage { position: absolute; inset: 0; }
 
-  /* Ring. Two strokes, always — the dark casing is what carries contrast onto
-     an unknown background. See design/tokens.css § the on-screen arrow. */
-  .ring-casing { fill: none; stroke: var(--arrow-casing); stroke-width: var(--ring-casing-width); }
-  .ring-stroke { fill: none; stroke: var(--ring-stroke);  stroke-width: var(--ring-stroke-width); }
-
-  .ring-pulse {
-    fill: none;
-    stroke: var(--ring-stroke);
-    stroke-width: 2;
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: pulse var(--ring-pulse-dur) cubic-bezier(0.22, 1, 0.36, 1) infinite;
-  }
-  @keyframes pulse {
-    0%   { transform: scale(1);    opacity: 0.55; }
-    70%, 100% { transform: scale(1.13); opacity: 0; }
-  }
-
+  /* No ring, and no pulse. A marker drawn on top of the control competes with
+     the thing the user is being asked to click, and an animated stroke on an
+     always-on-top layer keeps the compositor busy for as long as it is visible.
+     Two strokes, always — the dark casing is what carries contrast onto an
+     unknown background. See design/tokens.css § the on-screen arrow. */
   .arrow-casing { fill: none; stroke: var(--arrow-casing); stroke-width: var(--arrow-casing-width); stroke-linecap: round; }
   .arrow-stroke { fill: none; stroke: var(--arrow-stroke); stroke-width: var(--arrow-stroke-width); stroke-linecap: round; }
 
@@ -61,7 +48,6 @@
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .ring-pulse { animation: none; opacity: 0; }
     .label { animation: none; }
   }
 </style>
