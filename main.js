@@ -63,6 +63,7 @@ function main() {
         if (win && !win.isDestroyed()) win.webContents.send('hr:turn', event);
       },
       point: (payload) => windows.showArrow(payload),
+      excludeFromCapture: () => windows.excludeFromCapture(),
     });
 
     ipc.register({

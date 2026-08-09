@@ -687,10 +687,32 @@ async function openThread(id) {
 // ---------------------------------------------------------------------------
 
 const SETTING_ROWS = [
-  { key: 'capture',  label: 'Capture my screen',         note: 'Every question includes a screenshot' },
-  { key: 'pointing', label: 'Point at things on screen',  note: 'Draw an arrow at the control to use' },
-  { key: 'watching', label: 'Watch for finished steps',   note: 'Tick steps off by looking at your screen' },
-  { key: 'stealth',  label: 'Hide from screen sharing',   note: "Handrail won't appear in calls or recordings" },
+  { key: 'capture',  label: 'Capture my screen',        note: 'Every question includes a screenshot' },
+  { key: 'pointing', label: 'Point at things on screen', note: 'Draw an arrow at the control to use' },
+  { key: 'stealth',  label: 'Hide from screen sharing',  note: "Handrail won't appear in calls or recordings" },
+];
+
+/**
+ * Watching for finished steps is deliberately NOT a setting.
+ *
+ * It is the thing that makes guidance work for someone who will never click
+ * "done" — offering to turn it off invites them to break the product. It is
+ * already gated by "Capture my screen", which is the control that genuinely
+ * matters: no screenshots means no watching, and that switch is right there.
+ */
+
+/**
+ * Models offered in Settings. Every one must be vision-capable — Handrail's
+ * whole premise is reading the screen, and a text-only model fails in a way
+ * that looks like the app being stupid rather than misconfigured.
+ *
+ * Any OpenRouter id works via OPENROUTER_MODEL; this list is the curated set.
+ */
+const MODELS = [
+  { id: 'google/gemini-2.5-flash',     label: 'Gemini 2.5 Flash — fast, cheapest' },
+  { id: 'google/gemini-2.5-pro',       label: 'Gemini 2.5 Pro — better on dense UI' },
+  { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5 — strongest reasoning' },
+  { id: 'openai/gpt-4o',               label: 'GPT-4o' },
 ];
 
 async function refreshSettings() {
@@ -725,6 +747,46 @@ function renderSettings() {
     wrap.append(label, sw);
     frag.append(wrap);
   }
+
+  // Model. A dropdown rather than free text: an id with a typo in it fails at
+  // request time with a provider error, which reads as Handrail being broken.
+  const modelRow = document.createElement('div');
+  modelRow.className = 'setting setting--stack';
+
+  const modelLabel = document.createElement('span');
+  modelLabel.className = 'setting__label';
+  const modelB = document.createElement('b');
+  modelB.textContent = 'Model';
+  const modelNote = document.createElement('span');
+  modelNote.textContent = 'All of these can read your screen';
+  modelLabel.append(modelB, modelNote);
+
+  const select = document.createElement('select');
+  select.className = 'select';
+  select.setAttribute('aria-label', 'Model');
+
+  const known = MODELS.some((m) => m.id === state.settings.model);
+  for (const model of MODELS) {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = model.label;
+    if (model.id === state.settings.model) option.selected = true;
+    select.append(option);
+  }
+
+  // A model set through OPENROUTER_MODEL or an older build would otherwise
+  // silently show as whatever happens to be first in the list.
+  if (!known && state.settings.model) {
+    const option = document.createElement('option');
+    option.value = state.settings.model;
+    option.textContent = `${state.settings.model} (set outside Handrail)`;
+    option.selected = true;
+    select.append(option);
+  }
+
+  select.addEventListener('change', () => updateSetting('model', select.value));
+  modelRow.append(modelLabel, select);
+  frag.append(modelRow);
 
   // The key row is not a toggle — it shows a masked hint and hands back to
   // setup. The key itself never crosses the bridge after onboarding.

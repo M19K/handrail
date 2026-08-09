@@ -30,6 +30,8 @@ class TurnController {
    * @param {() => Electron.BrowserWindow} deps.getOverlay
    * @param {(event: object) => void} deps.emit      send on the hr:turn stream
    * @param {(rect: object|null) => void} deps.point draw or clear the arrow
+   * @param {() => (() => void)} deps.excludeFromCapture keep our own windows out
+   *   of the screenshot; returns a restore function
    */
   constructor(deps) {
     Object.assign(this, deps);
@@ -86,8 +88,8 @@ class TurnController {
 
     if (useCapture) {
       display = displayForWindow(this.getOverlay());
-      // Hide the overlay so Handrail's own UI is not in the screenshot it
-      // reasons about. Without this the model reads its own last answer back.
+      // Handrail is excluded from its own screenshot without anything moving
+      // on screen — see windows.js § excludeFromCapture.
       const shotResult = await this._captureWithoutSelf(display, 'full');
       if (turn.cancelled) return;
       shot = shotResult.buffer;
@@ -112,7 +114,7 @@ class TurnController {
     if (turn.cancelled) return;
 
     if (result.kind === 'task') {
-      await this._startTask(turn, result, display, text);
+      await this._startTask(turn, result, display, text, shot);
     } else {
       this.emit({ type: 'answer', turnId: turn.id, markdown: result.markdown });
       this.emit({ type: 'done', turnId: turn.id });
@@ -121,7 +123,7 @@ class TurnController {
     }
   }
 
-  async _startTask(turn, plan, display, prompt) {
+  async _startTask(turn, plan, display, prompt, screenshot) {
     const taskId = `task_${turn.id}`;
     this.task = {
       taskId,
@@ -146,13 +148,19 @@ class TurnController {
     this.active = null;
 
     const settings = this.store.getSettings();
-    if (settings.pointing && display) await this._pointAtActiveStep();
-    if (settings.watching && display) this.startWatching();
+    if (settings.pointing && display) await this._pointAtActiveStep(screenshot);
+    if (display) this.startWatching();
   }
 
   // --- arrow --------------------------------------------------------------
 
-  async _pointAtActiveStep() {
+  /**
+   * @param {Buffer} [reuse] a capture already taken this instant, if there is
+   *   one. The first arrow of a task follows immediately after the turn's own
+   *   screenshot, and taking a second one of the same unchanged screen is a
+   *   wasted round trip — and, before capture exclusion, a second visible flash.
+   */
+  async _pointAtActiveStep(reuse) {
     const task = this.task;
     if (!task || !task.display) return;
 
@@ -160,8 +168,12 @@ class TurnController {
     if (!step || !step.target) return this.point(null);
 
     try {
-      const { buffer, size } = await this._captureWithoutSelf(task.display, 'full');
-      if (!captureMatchesDisplay(size, task.display)) return this.point(null);
+      let buffer = reuse;
+      if (!buffer) {
+        const shot = await this._captureWithoutSelf(task.display, 'full');
+        if (!captureMatchesDisplay(shot.size, task.display)) return this.point(null);
+        buffer = shot.buffer;
+      }
 
       const found = await this.llm.locate({ screenshot: buffer, target: step.target });
       if (!found || found.found === false) return this.point(null);
@@ -338,33 +350,33 @@ class TurnController {
     task.failures = 0;
     this.emit({ type: 'step', taskId, index, status: 'active' });
 
-    if (!this.watch && this.store.getSettings().watching) this.startWatching();
+    if (!this.watch) this.startWatching();
     if (this.store.getSettings().pointing) this._pointAtActiveStep();
   }
 
   // --- helpers ------------------------------------------------------------
 
   /**
-   * Capture with Handrail's own windows hidden.
+   * Capture without Handrail appearing in its own screenshot.
    *
-   * Without this the overlay appears in every screenshot and the model starts
-   * describing Handrail's previous answer back to the user. The arrow window
-   * is hidden too, or the model sees the arrow it drew last time.
+   * Without this the model reads Handrail's previous answer back to the user,
+   * and sees the arrow it drew last time.
+   *
+   * It used to hide the overlay and show it again, which worked and also made
+   * the UI visibly vanish and reappear on every prompt, every arrow and every
+   * completion check. Capture exclusion achieves the same thing with nothing
+   * moving on screen — see windows.js § excludeFromCapture.
    */
   async _captureWithoutSelf(display, quality) {
-    const overlay = this.getOverlay();
-    const wasVisible = overlay && !overlay.isDestroyed() && overlay.isVisible();
-
-    if (wasVisible) overlay.hide();
-    this.point(null);
-    // One frame for the compositor to actually drop them. Without the wait the
-    // capture still contains the window that was just hidden.
-    await new Promise((r) => setTimeout(r, 90));
+    const restore = this.excludeFromCapture();
+    // A beat for the change in display affinity to take effect. Far shorter
+    // than the frame a hide/show needed, and invisible either way.
+    await new Promise((r) => setTimeout(r, 32));
 
     try {
       return await captureDisplay(display, quality);
     } finally {
-      if (wasVisible && overlay && !overlay.isDestroyed()) overlay.showInactive();
+      restore();
     }
   }
 

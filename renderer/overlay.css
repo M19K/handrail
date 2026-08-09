@@ -103,17 +103,44 @@ button {
   backdrop-filter: blur(var(--blur-surface));
 }
 
-/* Grip — the drag affordance. A dedicated target beats "drag the logo and
-   hope", which is what upstream had. */
-.grip {
+/* Brand. Sits where the grip used to, and drags too — people reach for the
+   name of a window before they hunt for a handle. */
+.brand {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: var(--space-1) 2px;
+  align-items: center;
+  gap: 7px;
   flex: none;
+  padding-right: var(--space-1);
+  color: var(--text-secondary);
   cursor: grab;
   -webkit-app-region: drag;
 }
+.brand:active { cursor: grabbing; }
+.brand__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Grip — the drag affordance, on the right. Four columns rather than two: it
+   has to be grabbed while the window floats over another application, and the
+   two-column version was too small a target to hit reliably. The generous
+   padding is part of the target, not decoration. */
+.grip {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: var(--space-2) 6px;
+  flex: none;
+  cursor: grab;
+  border-radius: var(--radius-sm);
+  -webkit-app-region: drag;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.grip:hover { background: var(--surface-hover); }
 .grip:active { cursor: grabbing; }
 .grip__row { display: flex; gap: 3px; }
 .grip__dot {
@@ -603,3 +630,35 @@ button {
   color: var(--danger-500);
   background: rgba(255, 107, 91, 0.12);
 }
+
+/* Model picker. Stacks its control below the label — a dropdown wide enough to
+   read a model name in cannot sit beside one on a bar this narrow. */
+.setting--stack { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+
+.select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  outline: 0;
+  cursor: pointer;
+  /* The native arrow renders light-on-light inside a dark translucent panel on
+     Windows; this draws one that matches the rest of the overlay. */
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%),
+                    linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%);
+  background-position: right 14px center, right 9px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+.select:hover { border-color: var(--border-strong); }
+.select:focus-visible { border-color: var(--border-accent); }
+
+/* The popup list is an OS surface, not ours — it needs an opaque ground or the
+   options render over whatever happens to be behind the overlay. */
+.select option { background: var(--ink-900); color: var(--text-primary); }

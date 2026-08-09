@@ -116,6 +116,7 @@ async function run() {
       if (win && !win.isDestroyed()) win.webContents.send('hr:turn', event);
     },
     point: (payload) => windows.showArrow(payload),
+    excludeFromCapture: () => windows.excludeFromCapture(),
   });
   ipc.register({ store, windows, turns, llm, onSetupComplete: () => {} });
 
@@ -255,6 +256,34 @@ async function run() {
   check('both replies kept', counts.assistant === 2, `${counts.assistant} replies`);
   check('the first question is still readable', counts.firstPromptStillThere);
   check('checklist rendered inside the transcript', counts.steps === 4, `${counts.steps} steps`);
+
+  // --- the overlay must not flicker --------------------------------------
+  //
+  // Capture used to hide the overlay and show it again, so the UI visibly
+  // vanished and came back on every prompt. Stealth is forced OFF here because
+  // that is the case that needs the work: with it on the windows are already
+  // excluded from capture and nothing has to happen at all.
+  console.log('\ncapture without flicker');
+
+  store.setSettings({ capture: true, stealth: false });
+  windows.applyStealth(false);
+  windows.showOverlay();
+  await new Promise((r) => setTimeout(r, 200));
+
+  let everHidden = false;
+  const watcher = setInterval(() => {
+    if (!overlay.isDestroyed() && !overlay.isVisible()) everHidden = true;
+  }, 10);
+
+  await turns.ask({ text: 'what is on my screen?', capture: true, turnId: 'flicker-check' });
+  await new Promise((r) => setTimeout(r, 1600));
+  clearInterval(watcher);
+
+  check('overlay stays visible through a capture', !everHidden);
+  check('the screenshot still got taken', (await errorsIn(overlay)).length === 0);
+
+  store.setSettings({ capture: false, stealth: true });
+  windows.applyStealth(true);
 
   // --- arrow -------------------------------------------------------------
   console.log('\narrow window');

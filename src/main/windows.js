@@ -166,6 +166,38 @@ class Windows {
     }
   }
 
+  /**
+   * Keep Handrail out of its own screenshots — without hiding anything.
+   *
+   * The first build hid the overlay, captured, then showed it again. That works,
+   * and it also means the UI visibly disappears and reappears on every single
+   * prompt, and again for every arrow and every completion check. It read as the
+   * app glitching.
+   *
+   * Content protection does the same job invisibly: on Windows it sets
+   * WDA_EXCLUDEFROMCAPTURE, on macOS NSWindowSharingNone, and either way
+   * desktopCapturer simply does not see the window. Nothing moves on screen.
+   *
+   * When stealth is on — the default — the windows are already excluded, so
+   * this is a no-op and costs nothing.
+   *
+   * Returns a function that restores the user's actual setting.
+   */
+  excludeFromCapture() {
+    if (STEALTH_DEFAULT && this.store.getSettings().stealth !== false) {
+      return () => {};
+    }
+
+    const wins = [this.overlay, this.arrow].filter((w) => w && !w.isDestroyed());
+    for (const win of wins) win.setContentProtection(true);
+
+    return () => {
+      for (const win of wins) {
+        if (!win.isDestroyed()) win.setContentProtection(false);
+      }
+    };
+  }
+
   // --- arrow --------------------------------------------------------------
 
   /**
