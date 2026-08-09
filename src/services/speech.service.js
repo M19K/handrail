@@ -439,6 +439,8 @@ class SpeechService extends EventEmitter {
     this.available = false;
     this.speechConfig = null;
     this.whisperCommand = null;
+    this.openRouterKey = null;
+    this.openRouterSttModel = null;
 
     const provider = this._getConfiguredProvider();
     this.provider = provider;
@@ -448,14 +450,46 @@ class SpeechService extends EventEmitter {
       return;
     }
 
+    if (provider === 'openrouter') {
+      this._initializeOpenRouterClient();
+      return;
+    }
+
     if (provider === 'whisper') {
       this._initializeWhisperClient();
       return;
     }
 
-    const reason = 'Speech recognition disabled. Configure Azure or local Whisper.';
+    const reason = 'Speech recognition disabled. Configure OpenRouter, Azure, or local Whisper.';
     logger.warn(reason);
     this.emit('status', reason);
+  }
+
+  /**
+   * Cloud transcription through OpenRouter. Reuses the local-Whisper capture
+   * pipeline (VAD, segmentation, WAV encoding) and only swaps the backend that
+   * turns a segment into text — so no local Python/ffmpeg toolchain is needed.
+   */
+  _initializeOpenRouterClient() {
+    const apiKey = (this._getSetting('openRouterKey') || process.env.OPENROUTER_API_KEY || '').trim();
+
+    if (!apiKey || apiKey === 'your_openrouter_api_key_here') {
+      const reason = 'OpenRouter API key not found. Speech recognition disabled.';
+      logger.warn(reason);
+      this.available = false;
+      this.emit('status', reason);
+      return;
+    }
+
+    this.openRouterKey = apiKey;
+    this.openRouterSttModel =
+      (this._getSetting('openRouterSttModel') || process.env.OPENROUTER_STT_MODEL || 'openai/whisper-1').trim();
+    this.available = true;
+
+    logger.info('OpenRouter speech service initialized successfully', {
+      model: this.openRouterSttModel
+    });
+    this.emit('status', 'OpenRouter speech ready');
   }
 
   _initializeAzureClient() {
@@ -566,7 +600,9 @@ class SpeechService extends EventEmitter {
         return;
       }
 
-      if (this.provider === 'whisper') {
+      // OpenRouter shares the Whisper capture path; only the transcription
+      // backend differs (see _transcribeWhisperBuffer).
+      if (this.provider === 'whisper' || this.provider === 'openrouter') {
         this._startWhisperRecording();
         return;
       }
@@ -1162,7 +1198,11 @@ class SpeechService extends EventEmitter {
       provider: this.provider,
       isRecording: this.isRecording,
       isProcessingAudio: this.isProcessingAudio,
-      isInitialized: this.provider === 'azure' ? !!this.speechConfig : !!this.whisperCommand,
+      isInitialized: this.provider === 'azure'
+        ? !!this.speechConfig
+        : this.provider === 'openrouter'
+          ? !!this.openRouterKey
+          : !!this.whisperCommand,
       sessionDuration: this.sessionStartTime ? Date.now() - this.sessionStartTime : 0,
       retryCount: this.retryCount,
       effectiveSettings: {
@@ -1190,6 +1230,10 @@ class SpeechService extends EventEmitter {
       return !!this.speechConfig && !!this.available;
     }
 
+    if (this.provider === 'openrouter') {
+      return !!this.openRouterKey && !!this.available;
+    }
+
     if (this.provider === 'whisper') {
       return !!this.whisperCommand && !!this.available;
     }
@@ -1209,7 +1253,7 @@ class SpeechService extends EventEmitter {
   }
 
   updateSettings(settings = {}) {
-    const speechKeys = ['speechProvider', 'azureKey', 'azureRegion', 'whisperCommand', 'whisperModelDir', 'whisperModel', 'whisperLanguage', 'whisperCaptureMode', 'whisperDevice', 'whisperSegmentMs'];
+    const speechKeys = ['speechProvider', 'azureKey', 'azureRegion', 'openRouterKey', 'openRouterSttModel', 'whisperCommand', 'whisperModelDir', 'whisperModel', 'whisperLanguage', 'whisperCaptureMode', 'whisperDevice', 'whisperSegmentMs'];
     let changed = false;
 
     for (const key of speechKeys) {
@@ -1229,7 +1273,7 @@ class SpeechService extends EventEmitter {
   _getConfiguredProvider() {
     const provider = String(this._getSetting('speechProvider') || process.env.SPEECH_PROVIDER || '').trim().toLowerCase();
 
-    if (provider === 'azure' || provider === 'whisper') {
+    if (provider === 'azure' || provider === 'whisper' || provider === 'openrouter') {
       return provider;
     }
 
@@ -1238,6 +1282,13 @@ class SpeechService extends EventEmitter {
 
     if (hasAzure) {
       return 'azure';
+    }
+
+    // Prefer OpenRouter over local Whisper when a key is present — it needs no
+    // Python/ffmpeg toolchain.
+    const hasOpenRouter = !!(this._getSetting('openRouterKey') || process.env.OPENROUTER_API_KEY);
+    if (hasOpenRouter) {
+      return 'openrouter';
     }
 
     return 'whisper';
@@ -1881,6 +1932,34 @@ class SpeechService extends EventEmitter {
   }
 
   async _transcribeWhisperBuffer(audioBuffer) {
+    // OpenRouter path: upload the WAV directly, no temp file and no local CLI.
+    if (this.provider === 'openrouter') {
+      const { transcribeAudio } = require('./openrouter.adapter');
+      const startedAt = Date.now();
+
+      try {
+        const text = await transcribeAudio(
+          this.openRouterKey,
+          this._createWavBuffer(audioBuffer),
+          {
+            model: this.openRouterSttModel || 'openai/whisper-1',
+            language: this._getWhisperLanguage()
+          }
+        );
+
+        logger.debug('OpenRouter transcription complete', {
+          durationMs: Date.now() - startedAt,
+          chars: text ? text.length : 0
+        });
+
+        return text;
+      } catch (error) {
+        logger.error('OpenRouter transcription failed', { error: error.message });
+        this.emit('error', `Transcription failed: ${error.message}`);
+        return '';
+      }
+    }
+
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'opencluely-whisper-'));
     const audioFilePath = path.join(tempDir, 'segment.wav');
 
