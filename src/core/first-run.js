@@ -28,9 +28,15 @@ class FirstRunManager {
    * sentinel file, or .env exists but has no Gemini key.
    */
   needsOnboarding() {
-    if (!fs.existsSync(this.sentinelPath)) return true;
     if (!fs.existsSync(this.envPath)) return true;
     const content = this._readEnv();
+
+    // An OpenRouter key satisfies setup on its own — the onboarding wizard is
+    // Gemini-specific and would write the wrong variable.
+    const openRouter = (content.OPENROUTER_API_KEY || '').trim();
+    if (openRouter && openRouter !== 'your_openrouter_api_key_here') return false;
+
+    if (!fs.existsSync(this.sentinelPath)) return true;
     const gemini = (content.GEMINI_API_KEY || '').trim();
     return !gemini || gemini === 'your_gemini_api_key_here';
   }

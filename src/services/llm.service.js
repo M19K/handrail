@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
+const { OpenRouterClient, mapModel } = require('./openrouter.adapter');
 const logger = require('../core/logger').createServiceLogger('LLM');
 const config = require('../core/config');
 const { promptLoader } = require('../../prompt-loader');
@@ -15,10 +16,15 @@ class LLMService {
   }
 
   initializeClient() {
-    const apiKey = config.getApiKey('GEMINI');
-    
+    // OpenRouter takes precedence when configured; otherwise fall back to the
+    // stock Gemini path so this patch stays non-destructive.
+    const openRouterKey = config.getApiKey('OPENROUTER');
+    this.useOpenRouter = !!openRouterKey && openRouterKey !== 'your_openrouter_api_key_here';
+
+    const apiKey = this.useOpenRouter ? openRouterKey : config.getApiKey('GEMINI');
+
     if (!apiKey || apiKey === 'your-api-key-here') {
-      logger.warn('Gemini API key not configured', { 
+      logger.warn('No LLM API key configured', {
         keyExists: !!apiKey,
         isPlaceholder: apiKey === 'your-api-key-here'
       });
@@ -26,12 +32,23 @@ class LLMService {
     }
 
     try {
+      if (this.useOpenRouter) {
+        this.client = new OpenRouterClient({ apiKey });
+        this.model = mapModel(config.get('llm.gemini.model'));
+        this.isInitialized = true;
+
+        logger.info('OpenRouter client initialized successfully', {
+          model: this.model
+        });
+        return;
+      }
+
       this.client = new GoogleGenAI({ apiKey });
-      
+
       // Use the configured model name (default: gemini-3.5-flash)
       this.model = config.get('llm.gemini.model');
       this.isInitialized = true;
-      
+
       logger.info('Gemini AI client initialized successfully', {
         model: this.model
       });
@@ -842,7 +859,10 @@ Remember: Be intelligent about filtering - only provide detailed responses when 
     const maxRetries = config.get('llm.gemini.maxRetries');
     const timeout = config.get('llm.gemini.timeout');
     const primaryModel = this.model;
-    const fallbackModels = config.get('llm.gemini.fallbackModels') || [];
+    const rawFallbacks = config.get('llm.gemini.fallbackModels') || [];
+    const fallbackModels = this.useOpenRouter
+      ? rawFallbacks.map((m) => mapModel(m)).filter((m) => m !== primaryModel)
+      : rawFallbacks;
     const modelsToTry = [primaryModel, ...fallbackModels];
 
     logger.debug('Executing Gemini request', {
@@ -1055,9 +1075,15 @@ Remember: Be intelligent about filtering - only provide detailed responses when 
    */
   async executeStreamingRequest(geminiRequest, onDelta) {
     const maxRetries = config.get('llm.gemini.maxRetries');
-    const apiKey = config.getApiKey('GEMINI');
+    const apiKey = this.useOpenRouter
+      ? config.getApiKey('OPENROUTER')
+      : config.getApiKey('GEMINI');
     const primaryModel = this.model;
-    const fallbackModels = config.get('llm.gemini.fallbackModels') || [];
+    const rawFallbacks = config.get('llm.gemini.fallbackModels') || [];
+    // Fallback ids in config are Gemini names; map them for OpenRouter.
+    const fallbackModels = this.useOpenRouter
+      ? rawFallbacks.map((m) => mapModel(m)).filter((m) => m !== primaryModel)
+      : rawFallbacks;
     const modelsToTry = [primaryModel, ...fallbackModels];
 
     let lastError = null;
@@ -1113,6 +1139,29 @@ Remember: Be intelligent about filtering - only provide detailed responses when 
   }
 
   _streamRequestForModel(geminiRequest, modelName, apiKey, onDelta) {
+    // OpenRouter mode: delegate to the adapter's async-generator stream rather
+    // than the raw Gemini SSE path below.
+    if (this.useOpenRouter) {
+      return (async () => {
+        const stream = await this.client.models.generateContentStream({
+          model: modelName,
+          contents: geminiRequest.contents,
+          config: geminiRequest.generationConfig,
+          systemInstruction: geminiRequest.systemInstruction
+        });
+
+        let fullText = '';
+        for await (const chunk of stream) {
+          const piece = this._extractChunkText(chunk);
+          if (piece) {
+            fullText += piece;
+            if (typeof onDelta === 'function') onDelta(piece);
+          }
+        }
+        return fullText;
+      })();
+    }
+
     const https = require('https');
     const timeout = config.get('llm.gemini.timeout');
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse`;
@@ -1532,6 +1581,12 @@ Remember: Be intelligent about filtering - only provide detailed responses when 
   }
 
   async executeAlternativeRequest(geminiRequest) {
+    // OpenRouter mode: the raw-HTTPS fallback below targets Google's endpoint
+    // and is meaningless here — the adapter already speaks plain HTTPS.
+    if (this.useOpenRouter) {
+      return this.executeRequest(geminiRequest);
+    }
+
     const https = require('https');
     const apiKey = config.getApiKey('GEMINI');
     const primaryModel = config.get('llm.gemini.model');
