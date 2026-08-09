@@ -25,10 +25,25 @@ const DEFAULT_SETTINGS = {
   pointing: true,    // draw the arrow
   stealth: true,     // hide from screen capture
   watching: true,    // auto-advance steps by looking at the screen
-  // Same price as the previous default, a generation newer. Accuracy at
-  // reading a screen is the whole product, so the cheapest adequate model is
-  // the right default — not the cheapest model.
-  model: 'google/gemini-3.5-flash-lite',
+  /**
+   * Accuracy at reading a screen is the whole product, so the default is the
+   * cheapest ADEQUATE model, not the cheapest model.
+   *
+   * Was `gemini-3.5-flash-lite` ($0.30/$2.50 per million). The lite tier kept
+   * inventing menu paths for UI that was not in the screenshot — Obsidian's
+   * vault location being the standing example — and `prompts.js` already tells
+   * it in as many words never to guess at a path it cannot see. An instruction
+   * the model ignores is a capability problem, not a prompt problem.
+   *
+   * `gemini-3.5-flash` is $1.50/$9.00, so roughly 4x. In absolute terms that is
+   * still fractions of a penny per question, and being wrong is far more
+   * expensive than being slow: this product is aimed at people who cannot tell
+   * a wrong instruction from a right one.
+   *
+   * `scripts/compare-models.js` runs your own screen through several models
+   * side by side if you want to check this rather than take it on faith.
+   */
+  model: 'google/gemini-3.5-flash',
 };
 
 class Store {
