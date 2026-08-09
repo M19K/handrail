@@ -46,6 +46,23 @@ const SANDBOX = path.join(os.tmpdir(), 'handrail-smoke-data');
 fs.rmSync(SANDBOX, { recursive: true, force: true });
 app.setPath('userData', SANDBOX);
 
+/**
+ * Wait for a condition instead of guessing at a sleep.
+ *
+ * Fixed sleeps are how a smoke test becomes a coin toss: the run that is 200ms
+ * slower than the one it was tuned on fails, and the failure reads as the
+ * feature being broken rather than the test being impatient.
+ */
+async function settled(probe, what, timeoutMs = 8000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try { if (await probe()) return true; } catch (_) { /* not ready */ }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  console.warn(`  warn  timed out waiting for ${what}`);
+  return false;
+}
+
 function check(name, condition, detail) {
   if (condition) console.log(`  ok    ${name}`);
   else {
@@ -416,10 +433,20 @@ async function run() {
   await store.setSettings({ pointing: true });
   // Through the UI, not the store: `ask` sends the renderer's own idea of
   // whether to capture, so setting it only in main leaves the two disagreeing.
+  //
+  // And WAITED FOR. The click starts an async settings round trip; submitting
+  // before it lands sends capture:false, which means no screenshot, no display
+  // and therefore no pointing at all. That raced about one run in four and
+  // looked exactly like the pointing feature being broken.
   await feed("document.getElementById('toggle-capture').click()");
+  await settled(() => feed("document.getElementById('toggle-capture').getAttribute('aria-pressed') === 'true'"),
+    'the renderer to agree that capture is on');
+
   windows.showArrow(null);
   await submit('where is this file on disk?');
-  await new Promise((r) => setTimeout(r, 700));
+  // Pointing is a second capture plus a second model call after the answer.
+  await settled(() => Promise.resolve(located.length > 0), 'a locate request');
+  await new Promise((r) => setTimeout(r, 400));
 
   check('a plain answer asked for a location', located.length > 0, JSON.stringify(located));
   check('a plain answer drew an arrow',

@@ -7,6 +7,50 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.2] — 2026-08-09
+
+The polish pass, which was the last unrun stage of the original plan, plus the
+last open item from the review.
+
+### Fixed
+
+- **Every piece of text now clears WCAG AA.** `--text-tertiary` measured 4.37:1
+  against the base surface, just under the 4.5:1 threshold. It carries every
+  settings row's explanation, the API key hint and the panel headings — the only
+  description a user gets of what each toggle does, for an audience defined as
+  people who are not technical. Now 4.66:1, and invisibly different to the eye.
+- **Two font sizes were off the type scale.** The step number (9px) and the
+  threads list date headings (9.5px) both sat below the smallest token. Both are
+  `--text-micro` now.
+- **The empty threads list read as a category heading.** It reused the uppercase
+  micro label that heads "Today" and "This week", so it appeared as a heading for
+  a group that was not there and said nothing about what to do next. It is a
+  sentence now, and it names the next action.
+- **The pointing smoke checks raced about one run in four.** The capture toggle
+  is clicked through the UI on purpose, but the async settings round trip was
+  never waited for, so the question was sometimes sent with capture off — no
+  screenshot, no pointing, and a failure that read as the feature being broken.
+
+### Added
+
+- **`llm.respond()` has tests.** It was the one load-bearing function in the
+  product with none, and it survived both the review and the QA pass because the
+  provider client was built inside `_client()` with no seam to test through.
+  `Llm` takes an optional client factory now. 19 tests over the request going out
+  and the result coming back. Unit tests: 80 → 99.
+- A design audit report at
+  `.gstack/qa-reports/design-audit-handrail-2026-08-09.md`, including four
+  findings deliberately left alone because fixing them would be a redesign rather
+  than a repair: the type scale, the placeholder's contrast, the send keycap's
+  contrast, and touch target sizes.
+
+### Notes
+
+`docs/REVIEW-2026-08-09.md` now has nothing open. Verification stands at 99 unit
+tests, 63 smoke checks and 29 QA tests.
+
+---
+
 ## [0.1.1] — 2026-08-09
 
 First QA pass. Handrail was driven as a real application for the first time —
@@ -119,5 +163,6 @@ being written to the wrong conversation.
   menu path.
 - `llm.respond()` has no unit test.
 
+[0.1.2]: https://github.com/M19K/handrail/releases/tag/v0.1.2
 [0.1.1]: https://github.com/M19K/handrail/releases/tag/v0.1.1
 [0.1.0]: https://github.com/M19K/handrail/releases/tag/v0.1.0

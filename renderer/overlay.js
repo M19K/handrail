@@ -788,9 +788,11 @@ function renderThreads() {
   const frag = document.createDocumentFragment();
 
   if (!shown.length) {
-    const empty = document.createElement('div');
-    empty.className = 'side__group';
-    empty.textContent = filter ? 'Nothing matches' : 'No threads yet';
+    const empty = document.createElement('p');
+    empty.className = 'side__empty';
+    empty.textContent = filter
+      ? 'Nothing matches that.'
+      : 'No conversations yet. Ask Handrail something and it will show up here.';
     frag.append(empty);
   }
 

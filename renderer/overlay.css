@@ -397,7 +397,7 @@ button {
   margin-top: 1px;
   border: 1px solid var(--step-marker-idle);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-micro);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -531,11 +531,23 @@ button {
 
 .side__group {
   padding: var(--space-3) var(--space-2) var(--space-1);
-  font-size: 9.5px;
+  font-size: var(--text-micro);
   font-weight: var(--weight-semi);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
-  color: var(--text-placeholder);
+  color: var(--text-tertiary);
+}
+
+/* An empty list is not a category with nothing in it.
+   This used to reuse .side__group — the uppercase 9.5px label that heads
+   "Today" and "This week" — so "No threads yet" rendered as a heading for a
+   group that was not there, in the palette's quietest colour. It is a sentence
+   addressed to the user, so it is set like one. */
+.side__empty {
+  padding: var(--space-4) var(--space-2);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
 }
 
 .thread {
