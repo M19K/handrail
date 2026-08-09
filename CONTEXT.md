@@ -50,15 +50,34 @@ which is the point.
   to the real one, which mutated the installed app and made results depend on
   the previous run.
 
+### Review status (2026-08-09)
+
+First independent review run: gstack `/review` with three specialist agents.
+**28 findings, 8 fixed, 20 open** — the full list with file/line and fixes is in
+[`docs/REVIEW-2026-08-09.md`](docs/REVIEW-2026-08-09.md). Read it before
+touching `src/main/turn.js`.
+
+The worst one already fixed: `.env` overrode the stored API key in the
+*packaged* app, and dotenv ships inside it — a `.env` dropped beside the
+executable silently rerouted every screenshot through someone else's OpenRouter
+account, with nothing on screen to say so.
+
+The worst one still open: an arrow can be drawn AFTER the user has hidden
+Handrail, because `_pointAtTarget` never re-checks state after its awaits
+(C5 in the review doc). `this.epoch` exists and is bumped; it is not yet
+consumed.
+
 ### Known gaps, in priority order
 
-1. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
+1. **20 open review findings** — see `docs/REVIEW-2026-08-09.md`. Six are
+   critical.
+2. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
    (e.g. Obsidian's vault location) survive every prompt change so far. The next
    real lever is a verification pass — have the model check its own plan against
    the screenshot before showing it — at the cost of one extra call per task.
-2. **gstack protocol was not completed** — see below.
-3. **macOS never built or run.** All parity work is theoretical.
-4. **No `/qa` run** (Playwright `_electron`), no `/review`, no `/ship`.
+3. **macOS never built or run.** All parity work is theoretical. CI now builds
+   it (`.github/workflows/release.yml`) but nobody has opened the .dmg.
+4. **No `/qa` run** (Playwright `_electron`). `/review` is done; `/ship` is not.
 5. **Onboarding is untested by a real user other than the author.**
 
 ### Traps

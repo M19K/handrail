@@ -156,7 +156,7 @@ for (const button of document.querySelectorAll('[data-back]')) {
   button.addEventListener('click', () => show(step - 1));
 }
 
-$('get-key').addEventListener('click', () => bridge.setup.openExternal('https://openrouter.ai/keys'));
+$('get-key').addEventListener('click', () => bridge.setup.openExternal('get-key'));
 
 $('finish').addEventListener('click', async () => {
   // Trigger the OS permission prompt here rather than mid-task. Being asked

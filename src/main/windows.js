@@ -75,9 +75,10 @@ class Windows {
         preload: path.join(ROOT, 'preload.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        // The overlay sits over other people's software; it has no business
-        // navigating anywhere or opening windows.
-        sandbox: false,
+        // Sandboxed, like the other two windows. This was false, which meant
+        // the ONE window that renders model output was also the one window
+        // opting out of Chromium's sandbox. The preload only uses contextBridge
+        // and ipcRenderer, both of which work sandboxed, so nothing needed it.
         spellcheck: false,
       },
     });

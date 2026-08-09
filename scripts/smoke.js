@@ -407,6 +407,41 @@ async function run() {
   await store.setSettings({ capture: false, pointing: false });
   windows.showArrow(null);
 
+  // --- security boundaries ------------------------------------------------
+  //
+  // From the pre-landing review. Each of these was a real hole, so each gets a
+  // check that fails if it reopens.
+  console.log('\nsecurity boundaries');
+
+  // The overlay renders model output. It must not be able to overwrite the key.
+  const setupFromOverlay = await feed(`
+    window.handrail.setup.saveKey('sk-or-v1-attacker')
+      .then(() => 'ALLOWED')
+      .catch(() => 'REFUSED')
+  `);
+  check('the overlay cannot call setup.saveKey', setupFromOverlay === 'REFUSED', setupFromOverlay);
+
+  // openExternal takes a destination name, so a renderer cannot choose the URL.
+  const openArbitrary = await feed(`
+    window.handrail.setup.openExternal('https://example.com/attacker')
+      .then(() => 'ALLOWED')
+      .catch(() => 'REFUSED')
+  `);
+  check('openExternal refuses an arbitrary URL', openArbitrary === 'REFUSED', openArbitrary);
+
+  // The window that renders untrusted output must be sandboxed.
+  check('the overlay renderer is sandboxed',
+    overlay.webContents.getLastWebPreferences().sandbox !== false,
+    String(overlay.webContents.getLastWebPreferences().sandbox));
+
+  // The key must never reach the renderer, in any form but a masked hint.
+  const leaked = await feed(`(async () => {
+    const s = await window.handrail.settings.get();
+    const blob = JSON.stringify(s);
+    return /sk-(or|ant)-v1-[A-Za-z0-9]{8,}/.test(blob) ? 'LEAKED' : 'MASKED';
+  })()`);
+  check('no unmasked key reaches the renderer', leaked === 'MASKED', leaked);
+
   // --- controls that have to actually work -------------------------------
   console.log('\ncontrols');
 

@@ -159,6 +159,31 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
   });
 
   // --- setup --------------------------------------------------------------
+  //
+  // One preload serves both windows, so the overlay — the window that renders
+  // model output — could otherwise call `saveKey` and overwrite the user's key,
+  // or `complete` and flip settings. It has no use for either. `setup` handlers
+  // therefore verify the sender is the onboarding window rather than trusting
+  // that only onboarding ever calls them.
+  const fromOnboarding = (event) => {
+    const win = windows.onboarding;
+    return !!win && !win.isDestroyed() && event.sender === win.webContents;
+  };
+
+  const handleSetup = (channel, fn) => {
+    ipcMain.handle(channel, async (event, ...args) => {
+      if (!fromOnboarding(event)) {
+        console.warn(`[ipc] ${channel} refused: sender is not the onboarding window`);
+        throw new Error('Not available here.');
+      }
+      try {
+        return await fn(...args);
+      } catch (err) {
+        console.error(`[ipc] ${channel} failed:`, err.message);
+        throw new Error(friendly(err));
+      }
+    });
+  };
 
   /**
    * Verify a key by actually using it.
@@ -167,7 +192,7 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
    * would only find out mid-task, with no reason to suspect the key. One
    * cheap request now is worth it.
    */
-  handle('hr:setup:validate', async (key) => {
+  handleSetup('hr:setup:validate', async (key) => {
     const value = String(key || '').trim();
     const provider = providerOf(value);
     if (provider === 'Unknown') {
@@ -182,7 +207,7 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     }
   });
 
-  handle('hr:setup:save', (key) => { store.saveKey(key); });
+  handleSetup('hr:setup:save', (key) => { store.saveKey(key); });
 
   /**
    * Nudge the OS into asking for screen-recording permission.
@@ -191,7 +216,7 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
    * use. Triggering it here means the user meets it during onboarding rather
    * than in the middle of their first real question.
    */
-  handle('hr:setup:screen-access', async () => {
+  handleSetup('hr:setup:screen-access', async () => {
     if (process.platform === 'darwin') {
       const status = systemPreferences.getMediaAccessStatus('screen');
       if (status === 'granted') return { granted: true };
@@ -204,7 +229,7 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     }
   });
 
-  handle('hr:setup:complete', () => {
+  handleSetup('hr:setup:complete', () => {
     store.setSettings({ setupComplete: true });
     // Order matters. Closing onboarding first leaves zero windows open for an
     // instant, which fires `window-all-closed` and quits the app on Windows
@@ -213,12 +238,26 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
     windows.closeOnboarding();
   });
 
-  handle('hr:setup:open-external', (url) => {
-    // Only https, and only somewhere we chose. The renderer must never be able
-    // to turn this into a general "open anything" primitive.
-    const value = String(url || '');
-    if (!/^https:\/\//.test(value)) return;
-    shell.openExternal(value);
+  /**
+   * Open one of a fixed set of destinations in the user's browser.
+   *
+   * Takes a NAME, not a URL. The first version took a URL and checked only that
+   * it started with https, which made it a general "open any website" primitive
+   * for anything running in a renderer — and the same preload is loaded into the
+   * overlay, the window that renders model output. A name cannot be pointed
+   * somewhere we did not choose.
+   */
+  const DESTINATIONS = {
+    'get-key': 'https://openrouter.ai/keys',
+  };
+
+  handleSetup('hr:setup:open-external', (name) => {
+    const url = DESTINATIONS[String(name || '')];
+    if (!url) {
+      console.warn(`[ipc] refused to open unknown destination: ${name}`);
+      return;
+    }
+    shell.openExternal(url);
   });
 }
 

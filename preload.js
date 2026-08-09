@@ -86,6 +86,8 @@ contextBridge.exposeInMainWorld('handrail', {
     saveKey: (key) => call('hr:setup:save', key),
     requestScreenAccess: () => call('hr:setup:screen-access'),
     complete: () => call('hr:setup:complete'),
-    openExternal: (url) => call('hr:setup:open-external', url),
+    // A destination NAME, not a URL — see ipc.js. The renderer cannot choose
+    // where the browser goes.
+    openExternal: (destination) => call('hr:setup:open-external', destination),
   },
 });

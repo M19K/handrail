@@ -92,7 +92,14 @@ class Store {
     if (this._key) return this._key;
 
     // .env wins during development so the arrow spike and the app share a key.
-    if (process.env.OPENROUTER_API_KEY) {
+    //
+    // Gated on !isPackaged, and that gate is load-bearing. dotenv is bundled
+    // into the packaged app, so without it a `.env` dropped next to the
+    // executable would silently replace the user's key — every screenshot and
+    // prompt would then be billed to, and visible in, somebody else's
+    // OpenRouter account, with nothing on screen to say so. keyHint would
+    // happily show the substituted key's tail.
+    if (!app.isPackaged && process.env.OPENROUTER_API_KEY) {
       this._key = process.env.OPENROUTER_API_KEY.trim();
       return this._key;
     }

@@ -39,6 +39,11 @@ class TurnController {
     this.active = null;   // { id, cancelled }
     this.task = null;     // { taskId, steps, activeIndex, display }
     this.watch = null;    // watching loop handle
+    // Bumped by anything that tears state down. Async work captures it and
+    // refuses to touch state if it has moved on since — otherwise a locate()
+    // that takes three seconds can draw an arrow AFTER the user has hidden
+    // Handrail, which our own comments call the worst failure this product has.
+    this.epoch = 0;
   }
 
   // --- lifecycle ----------------------------------------------------------
@@ -79,6 +84,7 @@ class TurnController {
   _abortRequest() {
     if (this.active) this.active.cancelled = true;
     this.active = null;
+    this.epoch += 1;
   }
 
   /**
@@ -176,9 +182,24 @@ class TurnController {
   }
 
   async _startTask(turn, plan, display, prompt, screenshot) {
+    // A plan with nothing left in it is not a task. llm.js filters out steps
+    // with no text, so a model that returns two blank steps used to arrive here
+    // as an empty array and crash on steps[0] below — leaving a task object
+    // with no steps assigned, which was then fed to every later prompt.
+    if (!plan.steps || plan.steps.length < 1) {
+      this.emit({ type: 'answer', turnId: turn.id, markdown: plan.title || 'I could not work out the steps for that.' });
+      this.emit({ type: 'done', turnId: turn.id });
+      this.active = null;
+      return;
+    }
+
     const taskId = `task_${turn.id}`;
     this.task = {
       taskId,
+      // The title is load-bearing: llm.js quotes it back to the model to say
+      // which checklist is already running. Without it every follow-up was told
+      // the running checklist was called "undefined".
+      title: plan.title,
       display,
       activeIndex: 0,
       failures: 0,
@@ -205,7 +226,7 @@ class TurnController {
 
     const settings = this.store.getSettings();
     if (settings.pointing && display) await this._pointAtActiveStep(screenshot);
-    if (display) this.startWatching();
+    if (display && settings.capture !== false) this.startWatching();
   }
 
   // --- arrow --------------------------------------------------------------
@@ -366,6 +387,12 @@ class TurnController {
       if (task.failures >= MAX_FAILURES) {
         console.warn('[turn] step checks failing; stopping watch');
         this.stopWatching();
+        // Say so. Silently giving up leaves a checklist that looks live but
+        // will never advance, with nothing to tell the user to tick it himself.
+        this.emit({
+          type: 'step', taskId: task.taskId, index: task.activeIndex,
+          status: 'unwatched',
+        });
       }
       return;
     }
@@ -403,9 +430,12 @@ class TurnController {
     step.status = 'done';
     this.emit({ type: 'step', taskId, index, status: 'done' });
 
-    // Advance to the first unfinished step rather than index+1: a user can
-    // tick steps off in any order, and auto-advance runs alongside them.
-    const next = task.steps.findIndex((s) => s.status !== 'done');
+    // Look FORWARD from the step just completed first. A plain findIndex over
+    // the whole list also matches 'wrong', so ticking off step 3 while step 1
+    // was flagged wrong used to drag the user back to step 1 and point the
+    // arrow at a control they were already past.
+    const ahead = task.steps.findIndex((s, i) => i > index && s.status !== 'done');
+    const next = ahead !== -1 ? ahead : task.steps.findIndex((s) => s.status !== 'done');
     if (next === -1) {
       this.stopWatching();
       this.point(null);
@@ -430,7 +460,7 @@ class TurnController {
     task.failures = 0;
     this.emit({ type: 'step', taskId, index, status: 'active' });
 
-    if (!this.watch) this.startWatching();
+    if (!this.watch && this.store.getSettings().capture !== false) this.startWatching();
     if (this.store.getSettings().pointing) this._pointAtActiveStep();
   }
 

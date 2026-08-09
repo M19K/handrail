@@ -115,3 +115,12 @@ Append-only. One line per decision: date — what was decided — why.
 - 2026-08-08 — Consequence of choosing A: the **three-state floating model in PRODUCT.md stands unchanged** — collapsed pill → expanded bar → expanded answer, draggable anywhere
 - 2026-08-08 — Established before the pick: **look is cheap to change later, shape is not** — colour/type/radius/surface live in tokens and reskin in hours; floating-vs-docked decides the window model, positioning, multi-monitor logic and the IPC contract. A-vs-C was an architecture decision wearing a visual costume
 - 2026-08-08 — Direction C was presented as an **explicit challenge to the locked three-state model** (collapsed pill → expanded bar → expanded answer) — an edge-docked rail is derived from the product's own name and avoids occluding the app being taught; choosing it means reversing that decision deliberately
+
+- 2026-08-09 — **Python 3.13.15 installed** (winget, user scope) — several gstack skills are Python-backed and were silently unusable; `ui-ux-pro-max` search now runs
+- 2026-08-09 — **Ran gstack `/review` with three specialist agents** — 28 findings on a diff nobody but the author had read. Recorded in `docs/REVIEW-2026-08-09.md` rather than fixed in one pass, because 20 of them deserve individual verification
+- 2026-08-09 — **`.env` no longer overrides the stored key in a packaged build** — dotenv ships inside the app, so a `.env` beside the executable silently rerouted every screenshot through another account. Gated on `!app.isPackaged`
+- 2026-08-09 — **`hr:setup:*` verifies the sender is the onboarding window** — one preload serves both windows, so the overlay (which renders model output) could overwrite the API key
+- 2026-08-09 — **`openExternal` takes a destination NAME, not a URL** — the https check made it a general "open any website" primitive reachable from the overlay
+- 2026-08-09 — **Releases are built in CI, not locally** (`.github/workflows/release.yml`) — electron-builder cannot run on this machine and a macOS .dmg needs a Mac; GitHub runners solve both for free. `scripts/package-win.js` stays as the local Windows fallback
+- 2026-08-09 — **Distribution is GitHub Releases, unsigned, with the SmartScreen/Gatekeeper steps documented in the release body** — signing is $99/yr per platform and deferred
+- 2026-08-09 — **Generated icons are committed** (`build/icon*.png`, `.ico`) — CI needs them to package and regenerating there would mean running Electron headless to rasterise an SVG

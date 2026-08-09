@@ -45,17 +45,37 @@ never crosses into the app's UI layer after setup — only a masked hint does.
 
 ## Install
 
-Handrail is in development. Build it yourself:
+Grab an installer from [Releases](../../releases).
+
+**Windows** — run the `.exe`. It is unsigned, so SmartScreen warns on first
+run: **More info** → **Run anyway**.
+
+**macOS** — open the `.dmg`. It is unsigned, so Gatekeeper refuses it first
+time: right-click the app → **Open** → **Open Anyway**. On macOS 15+, System
+Settings → Privacy & Security → **Open Anyway**.
+
+You will need an API key from [OpenRouter](https://openrouter.ai/keys), OpenAI
+or Anthropic. Onboarding asks for one and works out which is which from the key
+itself.
+
+### Or build it
 
 ```bash
-git clone <this repo> && cd handrail
+git clone https://github.com/M19K/handrail && cd handrail
 npm install
 npm start
 ```
 
-You will need an API key from [OpenRouter](https://openrouter.ai/keys),
-OpenAI or Anthropic. Onboarding asks for one and works out which is which from
-the key itself.
+To produce a Windows build locally, without electron-builder:
+
+```bash
+npx electron scripts/make-icons.js
+node scripts/package-win.js --install
+```
+
+That exists because electron-builder cannot run on every Windows machine —
+extracting its signing toolchain creates symlinks, which Windows refuses without
+Developer Mode. Releases are built in CI, where that is not a problem.
 
 ### A word about macOS
 
