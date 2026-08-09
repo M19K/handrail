@@ -52,8 +52,23 @@ if (!app.requestSingleInstanceLock()) {
 function main() {
   let store, windows, turns, llm, tray;
 
+  /**
+   * Someone launched Handrail while it was already running.
+   *
+   * Show it. This used to toggle, which means double-clicking the desktop
+   * shortcut while the overlay was on screen made it disappear — the icon you
+   * just clicked to summon the app is the thing that dismissed it, and there is
+   * nothing on screen to explain that. Toggling is right for the tray icon and
+   * for the hotkey, because those are switches. Launching is not a switch.
+   */
   app.on('second-instance', () => {
-    if (windows) windows.toggleOverlay();
+    if (!windows) return;
+    if (!store || !store.getKey()) {
+      windows.showOnboarding();
+      return;
+    }
+    launchOverlay();
+    if (windows.overlay && !windows.overlay.isDestroyed()) windows.overlay.focus();
   });
 
   app.whenReady().then(() => {
