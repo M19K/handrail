@@ -157,6 +157,21 @@ class TurnController {
       if (this.task && result.completedStep === this.task.activeIndex) {
         await this.completeStep(this.task.taskId, this.task.activeIndex);
       }
+
+      // Point at what the answer just told them to click.
+      //
+      // Pointing used to be tied to checklist steps only, so an ordinary answer
+      // saying "right-click the tab and choose Show in system explorer" could
+      // not draw an arrow at it — which is the one thing this product does that
+      // nothing else does. Reuses the screenshot already taken this turn.
+      if (result.target && shot && display && this.store.getSettings().pointing) {
+        await this._pointAtTarget({
+          display,
+          screenshot: shot,
+          target: result.target,
+          instruction: firstSentence(result.markdown),
+        });
+      }
     }
   }
 
@@ -208,15 +223,34 @@ class TurnController {
     const step = task.steps[task.activeIndex];
     if (!step || !step.target) return this.point(null);
 
+    await this._pointAtTarget({
+      display: task.display,
+      screenshot: reuse,
+      target: step.target,
+      instruction: step.text,
+    });
+  }
+
+  /**
+   * Find a named control in a screenshot and draw the arrow at it.
+   *
+   * Shared by checklist steps and by ordinary answers. Pointing was tied to
+   * steps at first, which meant a plain reply saying "right-click the tab and
+   * choose Show in system explorer" could not point at anything — and that is
+   * the one thing this product does that nothing else does.
+   */
+  async _pointAtTarget({ display, screenshot, target, instruction }) {
+    if (!display || !target) return this.point(null);
+
     try {
-      let buffer = reuse;
+      let buffer = screenshot;
       if (!buffer) {
-        const shot = await this._captureWithoutSelf(task.display, 'full');
-        if (!captureMatchesDisplay(shot.size, task.display)) return this.point(null);
+        const shot = await this._captureWithoutSelf(display, 'full');
+        if (!captureMatchesDisplay(shot.size, display)) return this.point(null);
         buffer = shot.buffer;
       }
 
-      const found = await this.llm.locate({ screenshot: buffer, target: step.target });
+      const found = await this.llm.locate({ screenshot: buffer, target });
       if (!found || found.found === false) return this.point(null);
 
       const box = parseBox(found);
@@ -225,25 +259,25 @@ class TurnController {
       // screens to the right rather than erroring.
       if (!isBoxSane(box)) return this.point(null);
 
-      const rect = boxToScreenRect(box, task.display);
+      const rect = boxToScreenRect(box, display);
 
       // The layout is computed here, in main, because it determines the size of
       // the window the arrow is drawn in — and only main can size a window.
       const layout = arrowLayout(rect.local, {
-        width: task.display.bounds.width,
-        height: task.display.bounds.height,
+        width: display.bounds.width,
+        height: display.bounds.height,
       });
 
       this.point({
-        display: task.display,
+        display,
         layout,
-        label: found.label || step.target,
-        instruction: step.text,
+        label: found.label || target,
+        instruction,
       });
       this.emit({ type: 'point', rect: rect.screen });
     } catch (err) {
-      // Pointing is an enhancement. If it fails the steps still work, so it
-      // fails silently rather than turning a working answer into an error.
+      // Pointing is an enhancement. If it fails the answer still stands, so it
+      // fails silently rather than turning a working reply into an error.
       console.warn('[turn] could not point:', err.message);
       this.point(null);
     }
@@ -443,6 +477,11 @@ class TurnController {
     let thread = this._currentThread();
     if (!thread) thread = this.store.createThread();
     this.store.appendTurn(thread.id, { prompt, ...reply, at: Date.now() });
+
+    // The header names the conversation, and the store is what titles it — from
+    // the first prompt. Without this the panel just said "Handrail" forever.
+    const titled = this.store.getThread(thread.id);
+    if (titled) this.emit({ type: 'thread', id: titled.id, title: titled.title });
   }
 }
 
@@ -468,6 +507,23 @@ function difference(a, b) {
     if (Math.abs(a[i] - b[i]) > 6) differing += 1;
   }
   return differing / a.length;
+}
+
+/**
+ * First sentence of an answer, for the arrow's label.
+ *
+ * The label sits on top of the user's screen next to the arrow; a whole
+ * multi-paragraph answer there would cover the thing being pointed at. Markdown
+ * markers are stripped because the label is plain text.
+ */
+function firstSentence(markdown) {
+  const plain = String(markdown || '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const match = plain.match(/^(.{0,140}?[.!?])(\s|$)/);
+  return (match ? match[1] : plain.slice(0, 140)).trim();
 }
 
 /** Provider and network errors, rewritten for someone who is not technical. */

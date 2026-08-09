@@ -105,7 +105,21 @@ Reply with a single JSON object. No prose outside it, no markdown fences around
 the JSON itself.
 
 ANSWER — the normal case:
-{"kind":"answer","markdown":"<your reply, as markdown. Lists and \`code\` are supported and encouraged.>"}
+{"kind":"answer","markdown":"<your reply, as markdown. Lists and \`code\` are supported and encouraged.>","target":"<optional, see below>","completedStep":<optional, see below>}
+
+ABOUT "target"
+If your answer tells them to click or use something visible in the screenshot,
+name it in "target" and Handrail draws an arrow to it on their real screen.
+That is the single most useful thing this product does, and it works for
+ordinary answers — not only for checklists.
+
+Name the control itself: "Show in system explorer in the right-click menu",
+"gear icon at the bottom left". Not the panel it lives in. One target only —
+the first thing they need to touch. Leave it out if your answer is not asking
+them to click anything, or if the control is not currently on screen.
+
+ABOUT "completedStep"
+Only when a checklist is running. See the section above.
 
 CHECKLIST — only when the three conditions above hold:
 {"kind":"task","title":"<what they are accomplishing, under 60 chars>","steps":[

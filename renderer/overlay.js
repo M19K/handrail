@@ -330,6 +330,12 @@ bridge.onTurn((event) => {
       if (state.task) renderSteps();
       break;
 
+    case 'thread':
+      // The header names the conversation, not the latest checklist.
+      state.openThreadId = event.id;
+      el.panelTitle.textContent = event.title || 'Handrail';
+      break;
+
     case 'error':
       showError(event.message, event.recoverable);
       break;

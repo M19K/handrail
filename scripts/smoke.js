@@ -369,6 +369,44 @@ async function run() {
   turns.reset();
   check('reset does put the checklist away', turns.task === null);
 
+  // --- an ordinary answer can point too ----------------------------------
+  //
+  // Pointing was tied to checklist steps, so a plain reply saying "right-click
+  // the tab and choose Show in system explorer" could not draw an arrow at it.
+  console.log('\npointing from a plain answer');
+
+  const located = [];
+  llm.locate = async ({ target }) => {
+    located.push(target);
+    return { found: true, label: target, box_2d: [400, 400, 440, 520], confidence: 0.9 };
+  };
+  llm.respond = async () => ({
+    kind: 'answer',
+    markdown: 'Right-click the tab and choose **Show in system explorer**. Windows opens the folder.',
+    target: 'Show in system explorer in the right-click menu',
+    completedStep: null,
+  });
+
+  await store.setSettings({ pointing: true });
+  // Through the UI, not the store: `ask` sends the renderer's own idea of
+  // whether to capture, so setting it only in main leaves the two disagreeing.
+  await feed("document.getElementById('toggle-capture').click()");
+  windows.showArrow(null);
+  await submit('where is this file on disk?');
+  await new Promise((r) => setTimeout(r, 700));
+
+  check('a plain answer asked for a location', located.length > 0, JSON.stringify(located));
+  check('a plain answer drew an arrow',
+    !!windows.arrow && !windows.arrow.isDestroyed() && windows.arrow.isVisible());
+
+  // The header names the conversation. It used to say "Handrail" forever.
+  const header = await feed("document.getElementById('panel-title').textContent");
+  check('header shows the thread name, not "Handrail"',
+    header && header !== 'Handrail' && header.length > 3, JSON.stringify(header));
+
+  await store.setSettings({ capture: false, pointing: false });
+  windows.showArrow(null);
+
   // --- the overlay must not flicker --------------------------------------
   //
   // Capture used to hide the overlay and show it again, so the UI visibly

@@ -156,6 +156,8 @@ class Llm {
     return {
       kind: 'answer',
       markdown: String(parsed.markdown || parsed.answer || res.text || '').trim(),
+      // An ordinary answer can point at something too — see turn.js.
+      target: parsed.target ? String(parsed.target).trim() : '',
       completedStep: Number.isInteger(step) && step > 0 ? step - 1 : null,
     };
   }
