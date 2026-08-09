@@ -112,7 +112,7 @@ class ApplicationController {
   constructor() {
     this.isReady = false;
     this.starting = false;
-    this.activeSkill = "dsa";
+    this.activeSkill = "guide";
   // Default to C++ so language is enforced from first run
   this.codingLanguage = "cpp";
     this.speechAvailable = false;
@@ -1087,7 +1087,7 @@ class ApplicationController {
       // Use image directly with LLM and active skill; do not send chat messages here
       const sessionHistory = sessionManager.getOptimizedHistory();
 
-      const skillsRequiringProgrammingLanguage = ['dsa'];
+      const skillsRequiringProgrammingLanguage = [];
       const needsProgrammingLanguage = skillsRequiringProgrammingLanguage.includes(this.activeSkill);
 
       this._responseSeq = (this._responseSeq || 0) + 1;
@@ -1153,7 +1153,7 @@ class ApplicationController {
       sessionManager.addUserInput(text, 'llm_input');
 
       // Check if current skill needs programming language context
-      const skillsRequiringProgrammingLanguage = ['dsa'];
+      const skillsRequiringProgrammingLanguage = [];
       const needsProgrammingLanguage = skillsRequiringProgrammingLanguage.includes(this.activeSkill);
 
       this._responseSeq = (this._responseSeq || 0) + 1;
@@ -1322,7 +1322,7 @@ class ApplicationController {
       });
 
       // Check if current skill needs programming language context
-      const skillsRequiringProgrammingLanguage = ['dsa'];
+      const skillsRequiringProgrammingLanguage = [];
       const needsProgrammingLanguage = skillsRequiringProgrammingLanguage.includes(this.activeSkill);
 
       // Stream the answer progressively to the configured speech target.

@@ -7,7 +7,7 @@ class PromptLoader {
     this.promptsLoaded = false;
     this.skillPromptSent = new Set();
     // Focus only on DSA
-    this.skillsRequiringProgrammingLanguage = ['dsa'];
+    this.skillsRequiringProgrammingLanguage = [];
   }
 
   /**
@@ -28,7 +28,7 @@ class PromptLoader {
       for (const file of files) {
         if (file.endsWith('.md')) {
           const skillName = path.basename(file, '.md');
-          if (skillName !== 'dsa') continue; // only keep DSA
+          if (skillName !== 'guide') continue; // Handrail ships a single guided-task skill
           const filePath = path.join(promptsDir, file);
           const promptContent = fs.readFileSync(filePath, 'utf8');
           
@@ -317,47 +317,10 @@ STRICT REQUIREMENTS:
    * @returns {string} Normalized skill name
    */
   normalizeSkillName(skillName) {
-    if (!skillName) return 'general';
-    
-    // Convert to lowercase and handle common variations
-    const normalized = skillName.toLowerCase().trim();
-    
-    // Map common variations to standard names
-    const skillMap = {
-      'dsa': 'dsa',
-      'data-structures': 'dsa',
-      'algorithms': 'dsa',
-      'data-structures-algorithms': 'dsa',
-      'behavioral': 'behavioral',
-      'behavioral-interview': 'behavioral',
-      'behavior': 'behavioral',
-      'sales': 'sales',
-      'selling': 'sales',
-      'business-development': 'sales',
-      'presentation': 'presentation',
-      'presentations': 'presentation',
-      'public-speaking': 'presentation',
-      'data-science': 'data-science',
-      'datascience': 'data-science',
-      'machine-learning': 'data-science',
-      'ml': 'data-science',
-      'programming': 'programming',
-      'coding': 'programming',
-      'software-development': 'programming',
-      'development': 'programming',
-      'devops': 'devops',
-      'dev-ops': 'devops',
-      'infrastructure': 'devops',
-      'system-design': 'system-design',
-      'systems-design': 'system-design',
-      'architecture': 'system-design',
-      'distributed-systems': 'system-design',
-      'negotiation': 'negotiation',
-      'negotiating': 'negotiation',
-      'conflict-resolution': 'negotiation'
-    };
-
-    return skillMap[normalized] || normalized;
+    // Handrail ships a single skill. Every request maps to the guided-task
+    // prompt; the multi-skill routing upstream used for interview categories
+    // (dsa, behavioral, sales, presentation) has been removed.
+    return "guide";
   }
 
   /**
@@ -368,7 +331,7 @@ STRICT REQUIREMENTS:
     if (!this.promptsLoaded) {
       this.loadPrompts();
     }
-    return ['dsa'];
+    return ['guide'];
   }
 
   /**
