@@ -98,9 +98,20 @@ function answerFrom(parsed, raw) {
 }
 
 class Llm {
-  constructor(getKey, getModel) {
+  /**
+   * @param {() => string|null} getKey
+   * @param {() => string} getModel
+   * @param {(opts: {apiKey: string}) => object} [makeClient] how to build the
+   *   provider client. Defaults to the real OpenRouter one; the only reason it
+   *   is injectable is that `respond()` was the single load-bearing function in
+   *   the product with no test at all — the client was constructed inside
+   *   `_client()`, so there was no seam to test through without a network call
+   *   and a funded key.
+   */
+  constructor(getKey, getModel, makeClient) {
     this.getKey = getKey;
     this.getModel = getModel;
+    this.makeClient = makeClient || ((opts) => new OpenRouterClient(opts));
   }
 
   _client() {
@@ -110,7 +121,7 @@ class Llm {
       err.code = 'NO_KEY';
       throw err;
     }
-    return new OpenRouterClient({ apiKey: key });
+    return this.makeClient({ apiKey: key });
   }
 
   /**
