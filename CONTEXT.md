@@ -8,6 +8,66 @@ Last updated: 2026-08-01
 
 ---
 
+## ⏭ SESSION HANDOFF — read this first (2026-08-08)
+
+### Git state
+Fresh repo, `main`. **Commit `7909792` is pristine upstream** — everything after
+is original work. `git diff 7909792..HEAD` is the portfolio artifact.
+
+```
+8150b29 feat(prompts): replace interview skill layer with guided-task assistance
+394c126 docs: add project context, decisions, product spec, platform matrix
+fd2fce0 feat(window): make capture-exclusion configurable via STEALTH_MODE
+9e0ae1f feat(speech): add OpenRouter transcription provider
+8e3f115 feat(llm): route inference through OpenRouter via drop-in adapter
+7909792 Initial import: OpenCluely @ 0a9da75 (Apache-2.0)
+```
+
+### Done
+- Design phase complete; design doc **APPROVED** at
+  `~/.gstack/projects/TechyCSR-OpenCluely/m19k1-main-design-20260808-205158.md`
+- gstack + design skills installed (72 skills); superpowers plugin disabled
+- `STEALTH_MODE` env flag added — set `false` to make the overlay screenshottable
+- Prompt layer replaced: `prompts/guide.md` is now the only skill; dsa/programming
+  deleted, multi-skill routing collapsed
+
+### BLOCKED
+**Arrow spike** (step 1, the go/no-go gate on the headline feature) needs a
+funded OpenRouter key. User will reuse the existing key and load credits.
+`.env` currently has it on the **wrong line** — it must be on
+`OPENROUTER_API_KEY=`, with `GEMINI_API_KEY=` left empty.
+
+### Next actions, in order
+1. **Arrow spike** — screenshot a real app → vision model → bounding box → draw
+   arrow in overlay. Validate DPI scaling + multi-monitor. Half a day, go/no-go.
+2. **Finish the strip** — speech subsystem still threads through 16 files
+   (`main.js`, `preload.js`, `config.js`, `first-run.js`, `settings.html`,
+   `onboarding.*`, `src/ui/*`, `speech-recognition.js`, `whisper-*`). This is
+   surgery, not a delete — do it as a focused pass. Voice is cut from v1.
+   Also dead code left behind: `prompt-loader.js:91` `case 'dsa':` inside
+   `injectProgrammingLanguage()`, now unreachable.
+3. **Rebrand** — `package.json` still says `opencluely` / TechyCSR / `com.opencluely.app`;
+   macOS `extendInfo` usage strings still reference Whisper and OpenCluely and are
+   user-facing copy; `hardenedRuntime` must become `true` before any future notarization.
+4. **Identity** → `design` skill. Then `ui-ux-pro-max` → `design-system` → `/design-shotgun`
+   (include BOTH onboarding options — one-time window vs overlay side panel — the
+   open question is deliberately deferred to visual mockups).
+5. **Renderer rebuild** — delete all four renderer windows, build one overlay with
+   three states (collapsed pill → expanded bar (default) → expanded answer) plus
+   slide-out panels. Redesign the IPC contract alongside.
+6. **Polish** → `impeccable`, `emil-design-eng`, animation pass. **Ship** → `/qa`
+   (Playwright `_electron`), `/review`, `/ship`.
+
+### Watch out for
+- **51 tests exist but live in the session scratchpad, not the repo** — they must
+  be moved in as a real suite.
+- `.env` is gitignored (`.gitignore:2`) — the key has never been committed. Keep it that way.
+- Backup of pre-reinit state: `%LOCALAPPDATA%\Temp\claude\handrail-backup\`
+- gstack slug is `TechyCSR-OpenCluely`, from the old git remote. It will change
+  when the remote is repointed; early artifacts stay under the old slug.
+
+---
+
 ## What Handrail is
 
 A cross-platform desktop overlay that **sees your screen and walks you through
