@@ -59,8 +59,22 @@ function parseArgs(argv) {
   return out;
 }
 
-/** Rough token estimate. Enough to compare models, not to bill anyone. */
+/** Rough token estimate for text. Enough to compare models, not to bill anyone. */
 const estimateTokens = (chars) => Math.ceil(chars / 4);
+
+/**
+ * Image tokens, roughly.
+ *
+ * NOT the byte count. Vision models tile an image and charge per tile, so a
+ * 500KB screenshot is on the order of 1,000-1,600 tokens, not the ~55,000 that
+ * counting base64 characters suggests. The first version of this script did
+ * count characters and reported costs about forty times too high.
+ *
+ * 1,300 is a mid estimate for a full-screen capture at these dimensions. The
+ * authoritative number is your OpenRouter activity page; this is only here to
+ * put the models on the same footing as each other.
+ */
+const IMAGE_TOKENS = 1300;
 
 app.whenReady().then(async () => {
   const args = parseArgs(process.argv.slice(2));
@@ -109,7 +123,7 @@ app.whenReady().then(async () => {
       const ms = Date.now() - started;
 
       // Image tokens dominate and are not reported back, so this is indicative.
-      const inTok = estimateTokens(buffer.toString('base64').length / 3) + estimateTokens(prompt.length);
+      const inTok = IMAGE_TOKENS + estimateTokens(prompt.length);
       const body = res.kind === 'task'
         ? `${res.title}\n${res.steps.map((s, i) => `  ${i + 1}. ${s.text}${s.target ? `   [target: ${s.target}]` : ''}`).join('\n')}`
         : res.markdown;
