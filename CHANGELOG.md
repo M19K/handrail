@@ -7,6 +7,47 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.3] — 2026-08-09
+
+The oldest open product complaint, closed: Handrail inventing menu paths for
+software that is not on the screen.
+
+### Changed
+
+- **The default model is now `google/gemini-3.5-flash`**, up from
+  `google/gemini-3.5-flash-lite`.
+
+  `src/main/prompts.js` has always told the model, in as many words, never to
+  guess at a menu or path it cannot actually see. The lite tier ignored that.
+  An instruction the model does not follow is a capability problem, not a prompt
+  problem, so the model tier was the lever left to pull.
+
+  Measured on a real desktop with `scripts/compare-models.js`, same screenshot,
+  same prompt:
+
+  | Question | `flash-lite` | `flash` |
+  |---|---|---|
+  | "where do I change the theme?" | invented a gear icon at the bottom of WhatsApp's sidebar — there is no gear there | named the three-dot menu at the top of the Chats column, which is real and where it said, and noticed a second app was on screen and asked which was meant |
+  | "how do I turn on dark mode in Obsidian?" *(Obsidian not open)* | described the inside of Obsidian's settings window as though it were visible | made step 1 "Open Obsidian from your taskbar", pointing at the taskbar icon, then gave the path |
+
+  The second row is the exact failure recorded in `CONTEXT.md` as the standing
+  product gap. It reproduced on the first attempt and the better model did not
+  make it.
+
+  Cost, measured rather than assumed: **$0.0006 per question** on the old model,
+  **$0.0024** on the new one. Four times more, and still a fifth of a penny.
+  Being wrong is far more expensive than that for an audience that cannot tell
+  a wrong instruction from a right one.
+
+### Added
+
+- `scripts/compare-models.js` (`npm run compare-models`) — runs one real
+  screenshot past several models and prints the answers side by side, so the
+  choice of model is checkable rather than an article of faith. Reads the key
+  from the app's own store. Costs about a penny a run.
+
+---
+
 ## [0.1.2] — 2026-08-09
 
 The polish pass, which was the last unrun stage of the original plan, plus the
@@ -163,6 +204,7 @@ being written to the wrong conversation.
   menu path.
 - `llm.respond()` has no unit test.
 
+[0.1.3]: https://github.com/M19K/handrail/releases/tag/v0.1.3
 [0.1.2]: https://github.com/M19K/handrail/releases/tag/v0.1.2
 [0.1.1]: https://github.com/M19K/handrail/releases/tag/v0.1.1
 [0.1.0]: https://github.com/M19K/handrail/releases/tag/v0.1.0
