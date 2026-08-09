@@ -1,3 +1,10 @@
+/*
+ * Copyright 2026 Maaz Kazi
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Modified from OpenCluely (TechyCSR, Apache-2.0). This file has been changed;
+ * see NOTICE and `git diff 7909792..HEAD` for what changed.
+ */
 /**
  * Handrail — preload bridge.
  *

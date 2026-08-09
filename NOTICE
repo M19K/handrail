@@ -1,0 +1,63 @@
+Handrail
+Copyright 2026 Maaz Kazi
+
+This product includes software developed by Maaz Kazi.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+AUTHORSHIP
+--------------------------------------------------------------------------------
+
+Handrail is an original product designed and built by Maaz Kazi.
+
+The product itself — what Handrail is, who it is for, how it behaves, and every
+part of how it works — is original work:
+
+  - the product concept and its positioning (PRODUCT.md)
+  - the guided-task model: plan, point, watch, correct
+  - the on-screen pointing system, its geometry, and the arrow's visual rules
+    (src/main/geometry.js, renderer/arrow.js)
+  - the step-watching loop and its cost model
+    (src/main/turn.js, and PRODUCT.md § Step completion)
+  - the entire prompt layer (src/main/prompts.js)
+  - the entire main process (src/main/)
+  - the entire renderer: overlay, arrow and onboarding (renderer/)
+  - the IPC contract (preload.js, preload-arrow.js, docs/IPC.md)
+  - the OpenRouter provider adapter (src/services/openrouter.adapter.js)
+  - the brand, identity and design system (design/)
+  - the build, packaging and release tooling (scripts/, .github/workflows/)
+  - all documentation (README.md, PRODUCT.md, DECISIONS.md, CONTEXT.md,
+    PLATFORM.md, DEPLOYMENT.md, docs/)
+
+Every file listed above carries a copyright header naming its author. The
+authorship record is also in the git history: commit 7909792 is the pristine
+upstream import and nothing else, so `git diff 7909792..HEAD` is exactly and
+only the original work.
+
+--------------------------------------------------------------------------------
+THIRD-PARTY AND UPSTREAM
+--------------------------------------------------------------------------------
+
+Handrail began as a fork of OpenCluely (https://github.com/TechyCSR/OpenCluely)
+by TechyCSR, licensed under the Apache License, Version 2.0.
+
+Copyright (c) TechyCSR — OpenCluely
+
+What remains from upstream, and only what remains:
+
+  - the approach to the transparent, always-on-top, capture-excluded overlay
+    window, which Handrail's own window layer builds on
+  - a small number of unmodified support files and assets
+
+Files that were derived from upstream and then changed carry a notice saying so,
+as Section 4(b) of the License requires. Everything else in this repository was
+written from scratch.
+
+The name "OpenCluely" is not licensed to this project, which is why this product
+is called Handrail. OpenCluely is an interview assistant; Handrail is not, and
+deliberately does not support that use case.
+
+Upstream published no NOTICE file, so nothing from one is carried forward here.

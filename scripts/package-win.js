@@ -1,3 +1,9 @@
+/*
+ * Copyright 2026 Maaz Kazi
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Original work, part of Handrail. See NOTICE.
+ */
 /**
  * Handrail — Windows packaging, without electron-builder.
  *
@@ -130,7 +136,10 @@ function build() {
   console.log('copying app');
   fs.mkdirSync(APP, { recursive: true });
 
-  for (const file of ['main.js', 'preload.js', 'preload-arrow.js', 'LICENSE', 'README.md']) {
+  // LICENSE and NOTICE ship inside the app: Apache-2.0 s4 requires both to
+  // travel with any copy that is distributed, and NOTICE is where authorship
+  // is recorded.
+  for (const file of ['main.js', 'preload.js', 'preload-arrow.js', 'LICENSE', 'NOTICE', 'README.md']) {
     const src = path.join(ROOT, file);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(APP, file));
   }

@@ -1,3 +1,9 @@
+/*
+ * Copyright 2026 Maaz Kazi
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Original work, part of Handrail. See NOTICE.
+ */
 /**
  * Provider detection from key shape.
  *

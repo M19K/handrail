@@ -16,7 +16,8 @@
     "clean": "rimraf dist"
   },
   "author": {
-    "name": "m19k1"
+    "name": "Maaz Kazi",
+    "url": "https://github.com/M19K"
   },
   "license": "Apache-2.0",
   "dependencies": {
@@ -45,7 +46,9 @@
       "!renderer/dev.js",
       "!renderer/mock-bridge.js",
       "!spike/**/*",
-      "!**/*.test.js"
+      "!**/*.test.js",
+      "LICENSE",
+      "NOTICE"
     ],
     "mac": {
       "category": "public.app-category.productivity",
@@ -94,5 +97,21 @@
       "title": "Handrail",
       "backgroundColor": "#131519"
     }
-  }
+  },
+  "homepage": "https://github.com/M19K/handrail",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/M19K/handrail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/M19K/handrail/issues"
+  },
+  "keywords": [
+    "electron",
+    "ai-assistant",
+    "screen-capture",
+    "desktop-overlay",
+    "openrouter",
+    "accessibility"
+  ]
 }
