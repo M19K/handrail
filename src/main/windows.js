@@ -102,12 +102,26 @@ class Windows {
 
     // Remember where the user put it. Position persistence is cheap and its
     // absence is immediately annoying on a window you reposition by hand.
+    //
+    // Both events, and debounced. `moved` fires once at the end of a drag, but
+    // ONLY for a drag — a window moved by setBounds, by the OS reflowing after
+    // a display change, or by a snap never fires it, and the position was
+    // silently lost. `move` fires for all of those, and also continuously
+    // during a drag, which is why it has to be debounced: writing settings.json
+    // synchronously on every mouse tick would make dragging stutter.
+    let moveTimer = null;
     const remember = () => {
       if (!this.overlay || this.overlay.isDestroyed()) return;
       const b = this.overlay.getBounds();
       this.store.setSettings({ overlayPos: { x: b.x, y: b.y } });
     };
-    this.overlay.on('moved', remember);
+    const rememberSoon = () => {
+      clearTimeout(moveTimer);
+      moveTimer = setTimeout(remember, 400);
+    };
+    this.overlay.on('move', rememberSoon);
+    this.overlay.on('moved', rememberSoon);
+    this.overlay.on('closed', () => clearTimeout(moveTimer));
 
     this.overlay.on('closed', () => { this.overlay = null; });
     return this.overlay;
