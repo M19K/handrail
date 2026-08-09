@@ -93,18 +93,43 @@ function main() {
    * has forgotten the shortcut — the tray is the thing you can always find.
    */
   function createTray() {
-    const iconPath = path.join(__dirname, 'build', 'icon-32.png');
-    const fallback = path.join(__dirname, 'icon.ico');   // packaged apps
+    // Purpose-sized PNGs first. Falling back to the 256x256 .ico works, but
+    // Windows squeezes it into a 16px slot and the mark turns to mush — which
+    // is a good way to be invisible in a tray full of other icons.
+    const sizes = process.platform === 'darwin' ? ['16', '32'] : ['32', '16'];
+    const candidates = [
+      ...sizes.flatMap((s) => [
+        path.join(__dirname, 'assets', `tray-${s}.png`),   // packaged
+        path.join(__dirname, 'build', `icon-${s}.png`),    // running from source
+      ]),
+      path.join(__dirname, 'icon.ico'),
+    ];
 
-    let image = nativeImage.createFromPath(fs.existsSync(iconPath) ? iconPath : fallback);
-    if (image.isEmpty()) {
-      console.warn('[main] no tray icon found; tray not created');
+    const found = candidates.find((p) => fs.existsSync(p));
+    if (!found) {
+      console.warn('[main] no tray icon on disk; tray not created');
       return;
     }
-    // macOS wants a template image so the tray icon follows the menu bar theme.
-    if (process.platform === 'darwin') image = image.resize({ width: 16, height: 16 });
 
-    tray = new Tray(image);
+    let image = nativeImage.createFromPath(found);
+    if (image.isEmpty()) {
+      console.warn(`[main] tray icon at ${found} would not decode; tray not created`);
+      return;
+    }
+    if (process.platform === 'darwin') {
+      image = image.resize({ width: 16, height: 16 });
+      // Template images follow the menu bar theme instead of staying mint.
+      image.setTemplateImage(true);
+    }
+
+    try {
+      tray = new Tray(image);
+    } catch (err) {
+      // A tray failure must not take the app down with it — losing the tray is
+      // survivable, losing the overlay is not.
+      console.warn('[main] could not create tray:', err.message);
+      return;
+    }
     tray.setToolTip('Handrail');
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Show Handrail', click: () => { launchOverlay(); windows.overlay.focus(); } },
@@ -123,6 +148,8 @@ function main() {
 
     // Clicking the icon itself is what most people try first.
     tray.on('click', () => windows.toggleOverlay());
+
+    console.log(`[main] tray created from ${found}`);
   }
 
   function launchOverlay() {

@@ -32,12 +32,17 @@ class Store {
     this.settings = { ...DEFAULT_SETTINGS, ...this._readJson(this.settingsPath, {}) };
     this.threads = this._readJson(this.threadsPath, []);
     this._key = null;
+    // Set when a stored key was found but could not be decrypted, so
+    // onboarding can explain rather than looking like a fresh install.
+    this.keyProblem = null;
   }
 
   // --- settings -----------------------------------------------------------
 
   getSettings() {
-    return { ...this.settings, keyHint: this.keyHint() };
+    // keyHint() runs getKey(), which is what sets keyProblem — so read it after.
+    const keyHint = this.keyHint();
+    return { ...this.settings, keyHint, keyProblem: this.keyProblem };
   }
 
   setSettings(patch) {
@@ -56,18 +61,28 @@ class Store {
    * macOS) when available. `safeStorage` is unavailable on some Linux setups
    * without a keyring, so there is a plaintext fallback — but it announces
    * itself rather than silently pretending to be encrypted.
+   *
+   * Written as JSON with an explicit `enc` field. The first version wrote a
+   * bare buffer and inferred the format from whether encryption happened to be
+   * available at READ time — so if that answer ever differed between writing
+   * and reading, it tried to decrypt plaintext and failed with no way to tell
+   * the two cases apart.
    */
   saveKey(key) {
     const value = String(key || '').trim();
     if (!value) return;
 
+    let record;
     if (safeStorage.isEncryptionAvailable()) {
-      fs.writeFileSync(this.keyPath, safeStorage.encryptString(value));
+      record = { v: 1, enc: 'os', data: safeStorage.encryptString(value).toString('base64') };
     } else {
       console.warn('[store] OS encryption unavailable — API key stored in plain text');
-      fs.writeFileSync(this.keyPath, value, 'utf8');
+      record = { v: 1, enc: 'none', data: Buffer.from(value, 'utf8').toString('base64') };
     }
+
+    fs.writeFileSync(this.keyPath, JSON.stringify(record), 'utf8');
     this._key = value;
+    this.keyProblem = null;
   }
 
   getKey() {
@@ -80,18 +95,40 @@ class Store {
     }
 
     if (!fs.existsSync(this.keyPath)) return null;
+
+    const raw = fs.readFileSync(this.keyPath);
+    let record = null;
     try {
-      const raw = fs.readFileSync(this.keyPath);
-      this._key = safeStorage.isEncryptionAvailable()
-        ? safeStorage.decryptString(raw)
-        : raw.toString('utf8');
+      record = JSON.parse(raw.toString('utf8'));
+    } catch (_) {
+      // Not JSON: written by the first version, which stored a bare buffer.
+    }
+
+    try {
+      if (record && record.v === 1) {
+        const buf = Buffer.from(record.data, 'base64');
+        this._key = record.enc === 'os' ? safeStorage.decryptString(buf) : buf.toString('utf8');
+      } else {
+        this._key = safeStorage.decryptString(raw);
+      }
+      this.keyProblem = null;
+      return this._key;
     } catch (err) {
-      // A key that cannot be decrypted is a key the user must re-enter —
-      // usually because the OS profile changed. Fail to "not set", not to a crash.
-      console.warn('[store] could not read stored key:', err.message);
+      /**
+       * The ciphertext is intact but this machine can no longer decrypt it.
+       *
+       * On Windows the encryption key lives in `Local State` inside userData;
+       * if that is regenerated the stored blob is orphaned permanently. Retrying
+       * will never work, so the file is discarded and the reason recorded —
+       * otherwise the app silently falls back to "no key set", drops the user
+       * into onboarding as though it were a fresh install, and never explains
+       * why the key they already entered has vanished.
+       */
+      console.warn('[store] stored key cannot be decrypted on this machine; discarding it');
+      this.keyProblem = 'unreadable';
+      try { fs.unlinkSync(this.keyPath); } catch (_) { /* best effort */ }
       return null;
     }
-    return this._key;
   }
 
   /** Masked tail. The only form of the key the renderer is ever given. */

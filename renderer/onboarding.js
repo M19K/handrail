@@ -174,3 +174,16 @@ $('finish').addEventListener('click', async () => {
 $('quit').addEventListener('click', () => bridge.window.quit());
 
 show(0);
+
+/**
+ * Explain a discarded key rather than looking like a fresh install.
+ *
+ * When a stored key cannot be decrypted the store deletes it and records why.
+ * Without this the user lands on "Connect an AI provider" with no idea their
+ * key ever existed, let alone why it went.
+ */
+bridge.settings.get()
+  .then((settings) => {
+    if (settings && settings.keyProblem === 'unreadable') $('key-lost').hidden = false;
+  })
+  .catch(() => { /* onboarding works without the explanation */ });

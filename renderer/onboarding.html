@@ -124,6 +124,18 @@
   .detected.ok { color: var(--accent); }
   .detected.bad { color: var(--danger-500); }
 
+  .notice {
+    display: flex; align-items: flex-start; gap: var(--space-3);
+    margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4);
+    border: 1px solid rgba(255, 184, 77, 0.28);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 184, 77, 0.10);
+    color: var(--warning-500);
+    font-size: var(--text-xs); line-height: var(--leading-normal);
+  }
+  .notice svg { flex: none; margin-top: 1px; }
+  .notice span { color: var(--text-secondary); }
+
   .field-help { margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--text-tertiary); line-height: var(--leading-normal); }
   .field-help a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--border-accent); cursor: pointer; }
 
@@ -230,6 +242,19 @@
       <p class="lede">
         Handrail needs a key to think with. Paste one below — it stays on this
         computer and is only ever sent to the provider it belongs to.
+      </p>
+
+      <!-- Shown only when a saved key was found but could not be decrypted.
+           Without it this screen looks like a fresh install and the user is
+           left wondering why the key they already entered has vanished. -->
+      <p class="notice" id="key-lost" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 7.5v5.5M12 16.2v.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Your saved key could not be read on this computer, so it has been
+        removed. This happens when Windows regenerates its encryption store.
+        Paste the key again and it will be saved fresh.</span>
       </p>
 
       <label class="field-label" for="key">API key</label>

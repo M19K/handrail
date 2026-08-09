@@ -161,6 +161,14 @@ function build() {
     dependencies: { dotenv: pkg.dependencies.dotenv },
   }, null, 2));
 
+  // Tray icons, at the sizes Windows and macOS actually draw them. The .ico is
+  // for the executable; a 256x256 image squeezed into a 16px tray slot is mush.
+  fs.mkdirSync(path.join(APP, 'assets'), { recursive: true });
+  for (const size of [16, 32]) {
+    const src = path.join(BUILD, `icon-${size}.png`);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(APP, 'assets', `tray-${size}.png`));
+  }
+
   console.log('writing icon');
   const icoSources = [16, 32, 48, 64, 128, 256]
     .map((s) => path.join(BUILD, `icon-${s}.png`))
