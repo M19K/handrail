@@ -24,12 +24,13 @@ GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
 +13,146 / −21,781** — it removes more than it adds, which is the point.
 
 - repo: **https://github.com/M19K/handrail** — public, no fork relationship
-- version: **0.1.1**, in `VERSION`, `package.json` and `CHANGELOG.md`
-- PR [#1](https://github.com/M19K/handrail/pull/1) — merged, the first on the repo
-- releases: **v0.1.0 and v0.1.1 are both DRAFTS**, neither published. Four assets
-  each: Windows setup + portable `.exe`, macOS x64 + arm64 `.dmg`
-- **v0.1.1 supersedes v0.1.0 entirely.** Publishing v0.1.1 and deleting the
-  v0.1.0 draft is the tidy end state, but that is a human call
+- version: **0.1.2**, in `VERSION`, `package.json` and `CHANGELOG.md`
+- PRs [#1](https://github.com/M19K/handrail/pull/1) and
+  [#2](https://github.com/M19K/handrail/pull/2) — both merged
+- releases: **v0.1.0, v0.1.1 and v0.1.2 are all DRAFTS**, none published. Four
+  assets each: Windows setup + portable `.exe`, macOS x64 + arm64 `.dmg`
+- **v0.1.2 supersedes both earlier drafts.** Publishing v0.1.2 and deleting the
+  v0.1.0 and v0.1.1 drafts is the tidy end state, but that is a human call
 - publishing is a deliberate human step — read the notes, then press it
 
 ### ⚠ The stored API key on this machine is unreadable
@@ -60,10 +61,10 @@ nothing was lost that was not already lost.
 
 ### Verification — three layers, all green
 
-- `npm test` — **80 unit tests** (geometry, turn state machine, capture source
-  selection, store recovery, response shapes, key-format detection). Node's
-  built-in runner, no framework, no Electron. **This is what gates CI, so it
-  must never need a display or a binary.**
+- `npm test` — **99 unit tests** (geometry, turn state machine, `respond()`,
+  capture source selection, store recovery, response shapes, key-format
+  detection). Node's built-in runner, no framework, no Electron. **This is what
+  gates CI, so it must never need a display or a binary.**
 - `npx electron scripts/smoke.js` — **63 checks** against the real main process
   and real preload, writing screenshots to `%TEMP%\handrail-smoke`.
 - `npm run qa` — **29 Playwright `_electron` tests** that launch the real app
@@ -89,21 +90,28 @@ OpenRouter account. And an arrow can no longer be drawn after the user has
 hidden Handrail: `this.epoch` is now captured and checked across every await in
 `_pointAtTarget`, not merely bumped.
 
-One thing the review named is genuinely still open: `llm.respond()` is never
-executed in a test, because the client is constructed inside `_client()` rather
-than injected.
+The last open item, `llm.respond()` having no test at all, is closed too. The
+blocker was structural — the provider client was built inside `_client()` with
+no seam to test through — so `Llm` takes an optional client factory now, and
+that is the only reason it does. **Nothing on that page is open.**
 
 ### Known gaps, in priority order
 
-1. **`llm.respond()` has no test** — see the last section of the review doc.
-2. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
+1. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
    (e.g. Obsidian's vault location) survive every prompt change so far. The next
    real lever is a verification pass — have the model check its own plan against
    the screenshot before showing it — at the cost of one extra call per task.
-3. **macOS never built or run.** All parity work is theoretical. CI now builds
-   it (`.github/workflows/release.yml`) but nobody has opened the .dmg.
-4. **No `/qa` run** (Playwright `_electron`). `/review` is done; `/ship` is not.
-5. **Onboarding is untested by a real user other than the author.**
+2. **macOS is built but never run.** CI produces both `.dmg` files on every tag
+   and they have never been opened on a Mac. All parity work is still theoretical.
+3. **Onboarding is untested by a real user other than the author.** It is now
+   covered by 7 automated tests and they all pass, but nobody unfamiliar with the
+   product has been watched going through it.
+4. **Four design findings left unfixed on purpose** — the type scale, the
+   placeholder's 3.11:1 contrast, the send keycap's contrast, and 17–22px touch
+   targets. Each would be a redesign rather than a repair, so each is the
+   author's call. Written up in
+   `.gstack/qa-reports/design-audit-handrail-2026-08-09.md`.
+5. **The stored API key on this machine is unreadable** — see the warning above.
 
 ### Traps added by the review fixes
 
@@ -359,7 +367,7 @@ and the design order was: identity → design system → `/design-shotgun` →
 | `/design-shotgun` | **substituted** | Variants were built by hand (`design/directions-v1.html`, `logo-*.html`) rather than by the skill. |
 | `brandkit` | **skipped** | Direction was locked in `DECISIONS.md` instead. |
 | `/design-html` | **substituted** | Renderer written directly. |
-| `impeccable`, `emil-design-eng`, animation trio | **skipped** | No polish pass has been run. |
+| `impeccable`, `emil-design-eng`, animation trio | **done, substituted** | 2026-08-09. Run as `/design-review` scoped to defects, not restyling — 4 fixed, 4 flagged. |
 | `/qa` | **done** | 2026-08-09. Playwright `_electron`, 29 tests, 2 bugs found and fixed — `.gstack/qa-reports/qa-report-handrail-2026-08-09.md`. |
 | `/review` | **done** | 2026-08-09. 27 findings, all 27 fixed — `docs/REVIEW-2026-08-09.md`. |
 | `/ship` | **done** | 2026-08-09. VERSION, CHANGELOG, PR #1 merged, v0.1.1 tagged and built. |
@@ -383,5 +391,7 @@ lag, the turn-id race, the undecryptable key). But it means:
 1. ~~**`/review`**~~ — done 2026-08-09, then all 27 findings fixed.
 2. ~~**`/qa`**~~ — done 2026-08-09. 29 `_electron` tests, 2 bugs fixed.
 3. ~~**`/ship`**~~ — done 2026-08-09. v0.1.1 tagged, built, waiting as a draft.
-4. **`impeccable` + `emil-design-eng`** — the polish pass. The only stage of the
-   original plan that has still never been run.
+4. ~~**`impeccable` + `emil-design-eng`**~~ — done 2026-08-09 as a defect-scoped
+   `/design-review`.
+
+**Every stage of the original plan has now been run.**
