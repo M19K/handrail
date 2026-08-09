@@ -19,28 +19,20 @@ Last updated: 2026-08-09
 - shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
 - rebuild + reinstall: `node scripts/package-win.js --install`
 
-29 commits, pushed. `7909792` is pristine upstream and is the first commit on
+34 commits, pushed. `7909792` is pristine upstream and is the first commit on
 GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
 +13,146 / −21,781** — it removes more than it adds, which is the point.
 
 - repo: **https://github.com/M19K/handrail** — public, no fork relationship
-- version: **0.1.2**, in `VERSION`, `package.json` and `CHANGELOG.md`
-- PRs [#1](https://github.com/M19K/handrail/pull/1) and
-  [#2](https://github.com/M19K/handrail/pull/2) — both merged
-- releases: **v0.1.0, v0.1.1 and v0.1.2 are all DRAFTS**, none published. Four
+- version: **0.1.3**, in `VERSION`, `package.json` and `CHANGELOG.md`
+- PRs [#1](https://github.com/M19K/handrail/pull/1), [#2](https://github.com/M19K/handrail/pull/2)
+  and [#3](https://github.com/M19K/handrail/pull/3) — all merged
+- releases: **v0.1.0 through v0.1.3 are all DRAFTS**, none published. Four
   assets each: Windows setup + portable `.exe`, macOS x64 + arm64 `.dmg`
-- **v0.1.2 supersedes both earlier drafts.** Publishing v0.1.2 and deleting the
-  v0.1.0 and v0.1.1 drafts is the tidy end state, but that is a human call
+- **Publish v0.1.3 and discard the rest.** v0.1.2 and earlier ship the lite
+  model, which invents menu paths for software that is not on screen
 - publishing is a deliberate human step — read the notes, then press it
 
-### ⚠ The stored API key on this machine is unreadable
-
-`key.dat` in `%APPDATA%\Handrail` is a legacy bare-buffer record from the very
-first version, and DPAPI on this machine can no longer decrypt it. So the
-installed app opens onboarding, with the "could not be read" notice showing —
-that is correct behaviour, not a regression. **Paste the key again to fix it.**
-The file is no longer deleted on a failed decrypt (review finding T5), so
-nothing was lost that was not already lost.
 
 ### Built since the last handoff
 
@@ -97,10 +89,12 @@ that is the only reason it does. **Nothing on that page is open.**
 
 ### Known gaps, in priority order
 
-1. **The model still guesses at UI it cannot see.** Confidently wrong menu paths
-   (e.g. Obsidian's vault location) survive every prompt change so far. The next
-   real lever is a verification pass — have the model check its own plan against
-   the screenshot before showing it — at the cost of one extra call per task.
+1. ~~**The model still guesses at UI it cannot see.**~~ **Closed 2026-08-09.**
+   It was never the prompt — prompts.js line 145 always forbade it and the lite
+   model ignored it. Default is now google/gemini-3.5-flash. Measured with
+   scripts/compare-models.js: asked about Obsidian with Obsidian closed, lite
+   described the inside of its settings window; flash made step 1 "open it from
+   the taskbar". $0.0006 vs $0.0024 per question.
 2. **macOS is built but never run.** CI produces both `.dmg` files on every tag
    and they have never been opened on a Mac. All parity work is still theoretical.
 3. **Onboarding is untested by a real user other than the author.** It is now
@@ -111,7 +105,7 @@ that is the only reason it does. **Nothing on that page is open.**
    targets. Each would be a redesign rather than a repair, so each is the
    author's call. Written up in
    `.gstack/qa-reports/design-audit-handrail-2026-08-09.md`.
-5. **The stored API key on this machine is unreadable** — see the warning above.
+5. Nothing else.
 
 ### Traps added by the review fixes
 
