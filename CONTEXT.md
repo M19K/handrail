@@ -4,11 +4,44 @@
 > or agent picking up this project should be able to continue from here without
 > re-deriving anything. Update it when a decision is made, not at the end.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-10
 
 ---
 
-## ⏭ SESSION HANDOFF — read this first (2026-08-09, macOS pass)
+## ⏭ WHERE THIS STANDS RIGHT NOW (2026-08-10)
+
+Branch **`fix/macos-parity`**, pushed, **PR [#4](https://github.com/M19K/handrail/pull/4) open**. Working tree clean. VERSION is
+`0.1.4`; the latest *published* release is still `v0.1.3`.
+
+**Verified green on this Mac (M4 mini, macOS 26.5.2, 1920x1080 @ 1x):**
+
+- 117 unit tests · 63 smoke checks · 29 Playwright `_electron` tests
+- `npm run verify:mac` — the packaged app installs, launches, draws a window
+- `npm run doctor` — catches duplicate bundles, stale TCC records, temp-dir litter
+- eslint clean; typecheck down from 63 errors to 12, of which 3 are in `src/`
+  and the rest are Electron typings gaps in build scripts
+- The arrow was confirmed landing on a real control on real hardware
+
+**What is NOT done, in order:**
+
+1. **Merge PR #4** and publish **v0.1.4** with both `.dmg` files. Nothing else
+   blocks it.
+2. The last 12 type errors — script-level, cosmetic, not shipping defects.
+3. **Never verified on this hardware:** Retina (2x) arrow geometry, multi-monitor
+   with mixed scale factors, and the Intel x64 build. This machine is a single
+   1x display, so those three remain theoretical exactly as they were before.
+4. Signing + notarisation ($99/yr) is still the only thing that removes the
+   Gatekeeper dance and the re-grant-after-every-update problem. See `PLATFORM.md`.
+
+**The one trap to carry forward:** every rebuild changes the ad-hoc signature,
+and macOS binds both the Screen Recording grant and the keychain item to that
+signature. Reinstalling silently voids both, and the Settings toggle keeps
+showing "on" while it is not in effect. `npm run doctor` reports this; the fix is
+`tccutil reset ScreenCapture com.handrail.app`, then let the app re-prompt.
+
+---
+
+## ⏭ SESSION HANDOFF (2026-08-09, macOS pass)
 
 ### macOS was run for the first time, and is now fixed
 
