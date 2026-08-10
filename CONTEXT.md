@@ -100,7 +100,7 @@ report and no output at all.
 
 **Handrail runs.** It is packaged, installed and on the desktop:
 
-- source: `C:\Users\m19k1\Downloads\Claude Projects\OpenCluely`
+- source: the local working copy of this repo
 - installed: `%LOCALAPPDATA%\Programs\Handrail\Handrail.exe`
 - shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
 - rebuild + reinstall: `node scripts/package-win.js --install`
@@ -261,15 +261,17 @@ and it drives every UI and copy decision.
 
 ## Origin and licensing
 
-Handrail is a fork of **[OpenCluely](https://github.com/TechyCSR/OpenCluely)**
-(TechyCSR), licensed **Apache 2.0**.
+Upstream credit, the licence position and what is original all live in `NOTICE`.
+That file is the single source of truth — do not restate it here or anywhere
+else.
 
-- The upstream repo has three conflicting license claims: `LICENSE` = Apache 2.0,
-  `package.json` = ISC, README badge = MIT. **Treat Apache 2.0 as binding.**
+Two working notes that are not in `NOTICE` and are worth keeping:
+
+- Upstream carried three conflicting licence claims (`LICENSE` = Apache 2.0,
+  `package.json` = ISC, README badge = MIT). **Apache 2.0 is treated as
+  binding**, being the most restrictive and the one in `LICENSE`.
 - Obligations on redistribution: retain `LICENSE`, mark modified files as
-  changed, preserve copyright notices, add own copyright alongside.
-- The name "OpenCluely" is **not** licensed to us — hence Handrail.
-- No `NOTICE` file upstream, so that obligation does not apply.
+  changed, preserve copyright notices, add our own alongside.
 
 ### Attribution strategy (decided)
 - Do **not** use GitHub's Fork button — it buries the work in upstream's network graph.
@@ -330,7 +332,7 @@ framing, DSA prompts, onboarding, UI).
   `[1] 1920x1080 DIP @ scaleFactor 1 at (0, 0)` — primary, has the taskbar
   Mixed DPI plus a negative origin covers the coordinate cases that break.
 - Chrome and Edge both installed (Playwright QA path available)
-- Also installed: Cluely (commercial, `%LOCALAPPDATA%\Programs\cluely`), Pluely v1.0.0
+- Comparable commercial overlays also installed, for reference
 
 ### Provider setup
 - **OpenRouter** for both LLM and STT, one key

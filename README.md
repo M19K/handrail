@@ -175,19 +175,8 @@ step-watching loop, the prompt layer, the whole main process, the whole
 renderer, the IPC contract, the brand and design system, the build and release
 tooling, and all documentation are original work.
 
-Handrail began as a fork of [OpenCluely](https://github.com/TechyCSR/OpenCluely)
-by TechyCSR, licensed Apache 2.0, and reuses its approach to the transparent
-always-on-top overlay. That is what remains from upstream. The original project
-is an interview assistant; Handrail is not, and deliberately does not support
-that use case. The name "OpenCluely" is not licensed to this project, which is
-why this one is called Handrail.
-
 Commit `7909792` is the pristine upstream import and nothing else, so
-`git diff 7909792..HEAD` is exactly and only the original work: 93 files,
-+13,146 / −21,781.
+`git diff 7909792..HEAD` is exactly and only the original work.
 
-Licensed under [Apache 2.0](LICENSE), which is what the upstream licence
-requires. Under Apache 2.0 the copyright in the original work stays with its
-author; the licence grants others the right to use it, on condition that they
-keep the licence, the copyright notices and the NOTICE file intact, and state
-what they changed.
+Licensed under [Apache 2.0](LICENSE). Third-party and upstream credit is
+recorded in [NOTICE](NOTICE).

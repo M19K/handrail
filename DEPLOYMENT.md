@@ -1,4 +1,4 @@
-# OpenCluely — OpenRouter deployment notes
+# Handrail — OpenRouter deployment notes
 
 Patched build. Runs from source, routes all LLM traffic through OpenRouter.
 
@@ -77,19 +77,6 @@ toolchain instead.
 **`topK` and `thinkingConfig` are dropped** in translation — no OpenAI
 equivalent. Behaviour is unaffected for normal use.
 
-**Certificate verification is weakened for one host.** `main.js:324-330`
-overrides cert checking with `callback(0)` for
-`generativelanguage.googleapis.com`. Unused in OpenRouter mode but still
-present in the code.
-
-**Upstream updates will conflict.** This is a fork of an actively developed
-app. `git pull` will likely conflict in `llm.service.js`. The adapter file
-itself is standalone and should survive.
-
-## If you prefer the prebuilt binary
-
-`~/Downloads/OpenCluely-Setup-1.8.7.exe` was downloaded and its SHA256
-**verified against the project's published `SHA256SUMS.txt`**. It is unsigned,
-so SmartScreen will warn. Note it is the **stock** build — Gemini only, no
-OpenRouter patch. Use it only if you'd rather supply a Gemini key from
-aistudio.google.com than run from source.
+Handrail does not track upstream. There is no `git pull` from the original
+project and no upstream binary to fall back to — installers are built and
+published from this repository (see `.github/workflows/release.yml`).

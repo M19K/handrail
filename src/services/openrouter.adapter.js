@@ -5,9 +5,9 @@
  * Original work, part of Handrail. See NOTICE.
  */
 /**
- * OpenRouter adapter for OpenCluely.
+ * OpenRouter adapter.
  *
- * OpenCluely speaks Google Gemini's native protocol throughout. This module
+ * Handrail speaks Google Gemini's native protocol throughout. This module
  * presents the same surface as `new GoogleGenAI({apiKey})` — an object with
  * `.models.generateContent()` and `.models.generateContentStream()` — but
  * talks OpenAI-compatible JSON to OpenRouter underneath and converts the
@@ -146,12 +146,17 @@ function toGeminiChunk(json) {
   };
 }
 
+/**
+ * OpenRouter reads `HTTP-Referer` and `X-Title` to attribute traffic on its
+ * public app leaderboard, so these are not cosmetic — they must name Handrail.
+ * They carried upstream's values until 0.1.5; see DECISIONS.md 2026-08-10.
+ */
 function headers(apiKey) {
   return {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://github.com/TechyCSR/OpenCluely',
-    'X-Title': 'OpenCluely',
+    'HTTP-Referer': 'https://github.com/M19K/handrail',
+    'X-Title': 'Handrail',
   };
 }
 
@@ -279,7 +284,10 @@ class OpenRouterClient {
  * `OPENROUTER_BASE` — are used inside this file and were exported to nobody;
  * `transcribeAudio` went with them, along with the speech-to-text it served.
  * v1 cut speech entirely (see CONTEXT.md § v1 scope), so it had been dead since
- * that decision, still carrying an upstream `HTTP-Referer` and an `X-Title` of
- * "OpenCluely" on every request it would have made.
+ * that decision.
+ *
+ * `headers()` was NOT dead, which is easy to misread from the above: it feeds
+ * both live calls, so its attribution headers went out on every real request.
+ * Corrected in 0.1.5.
  */
 module.exports = { OpenRouterClient };
