@@ -7,6 +7,12 @@
 # here and `scripts/package-win.js` stays as the local Windows fallback.
 #
 # Triggered by pushing a tag: `git tag v0.1.0 && git push --tags`.
+#
+# EVERY RELEASE SHIPS EVERY PLATFORM. v0.1.4 went out with only the two macOS
+# `.dmg` files, because it was published by hand from a Mac while this workflow
+# was cancelled. A Windows user opening the latest release found nothing they
+# could run and no reason given. Cut releases by pushing a tag and letting this
+# build both halves; do not publish hand-built artifacts for one platform.
 
 name: Release
 
@@ -52,6 +58,14 @@ jobs:
           # Unsigned on purpose for now. Without this electron-builder hunts for
           # a certificate in the keychain and fails the build when it finds none.
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # The only check that runs the PACKAGED bundle rather than the repo.
+      # Four releases shipped a macOS .dmg that could not open a window while
+      # every suite above was green, because every suite above executes the
+      # source tree. A never-opened artifact must not leave CI again.
+      - name: Verify the packaged macOS app starts
+        if: matrix.platform == 'mac'
+        run: node scripts/verify-mac-build.js
 
       - uses: actions/upload-artifact@v4
         with:

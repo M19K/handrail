@@ -77,21 +77,38 @@ function formatHistory(history) {
  * blob, printed at the user verbatim. Never showing raw JSON matters more than
  * where the text came from.
  */
+/** The step texts as markdown, or '' when there are none worth showing. */
+function stepsMarkdown(parsed) {
+  if (!Array.isArray(parsed.steps)) return '';
+  const steps = parsed.steps
+    .map((s) => String((s && s.text) || '').trim())
+    .filter(Boolean);
+  if (!steps.length) return '';
+  // One step is a sentence, not a list.
+  return steps.length === 1 ? steps[0] : steps.map((t) => `- ${t}`).join('\n');
+}
+
 function answerFrom(parsed, raw) {
   const written = String(parsed.markdown || parsed.answer || '').trim();
+  const list = stepsMarkdown(parsed);
+
+  // A reply that carries BOTH prose and steps keeps both.
+  //
+  // This used to return `written` and stop, which silently threw the steps
+  // away. The model does not always split cleanly down the two shapes the
+  // schema offers: asked something multi-step that opens like a single action,
+  // it writes a lead-in AND a list. If that lead-in ends on a colon — "here's
+  // the full path:" — and `kind` is not exactly "task", or the list is one step
+  // long, the caller's checklist branch does not fire either, and the user is
+  // shown a sentence promising a list that was generated and then discarded.
+  // Whatever the model returns, nothing it wrote is dropped on the floor.
+  if (written && list) return `${written}\n\n${list}`;
   if (written) return written;
 
-  if (parsed.kind === 'task' && Array.isArray(parsed.steps)) {
-    const steps = parsed.steps
-      .map((s) => String((s && s.text) || '').trim())
-      .filter(Boolean);
-    if (steps.length) {
-      const title = String(parsed.title || '').trim();
-      // One step is a sentence, not a list. More than one only reaches here if
-      // every other step was blank, in which case a list is still right.
-      const body = steps.length === 1 ? steps[0] : steps.map((t) => `- ${t}`).join('\n');
-      return title && steps.length > 1 ? `**${title}**\n\n${body}` : body;
-    }
+  if (list) {
+    const title = String(parsed.title || '').trim();
+    const multi = list.startsWith('- ');
+    return parsed.kind === 'task' && title && multi ? `**${title}**\n\n${list}` : list;
   }
 
   return String(raw || '').trim();
@@ -284,8 +301,19 @@ class Llm {
     };
   }
 
-  /** Stream a plain answer. Used when there is no screenshot to wait on. */
-  async *stream({ prompt, history }) {
+  /**
+   * Stream a plain answer. Used when there is no screenshot to wait on.
+   *
+   * NOTE: nothing calls this today — every turn goes through `respond()`. It is
+   * kept because the no-screenshot path is a real product case, but it is
+   * unreachable code and should be deleted if that stays true.
+   *
+   * `maxOutputTokens` and `signal` were both missing here, unlike every other
+   * `_req` call: the answer silently inherited the 1400 default while
+   * `prompts.js` documented a 3000 cap, and an in-flight answer could not be
+   * aborted. Neither could reach a user, both were wrong.
+   */
+  async *stream({ prompt, history, signal }) {
     const parts = [];
     if (history && history.length) {
       const recent = history.slice(-4)
@@ -296,7 +324,7 @@ class Llm {
     parts.push({ text: prompt });
 
     const iterator = await this._client().models.generateContentStream(
-      this._req(ANSWER_SYSTEM, parts, { temperature: 0.4 })
+      this._req(ANSWER_SYSTEM, parts, { temperature: 0.4, maxOutputTokens: 3000, signal })
     );
     for await (const chunk of iterator) {
       if (chunk && chunk.text) yield chunk.text;
@@ -352,4 +380,4 @@ class Llm {
   }
 }
 
-module.exports = { Llm, parseJson, answerFrom };
+module.exports = { Llm, parseJson, answerFrom, targetFrom };

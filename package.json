@@ -1,6 +1,6 @@
 {
   "name": "handrail",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A desktop overlay that sees your screen and walks you through complex software, step by step.",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "spike:arrow": "electron spike/arrow",
     "dev:renderer": "electron renderer/dev.js",
     "build": "electron-builder",
-    "build:mac": "electron-builder --mac && npm run verify:mac",
+    "build:mac": "electron-builder --mac && node scripts/verify-mac-build.js && rimraf dist/mac dist/mac-arm64 && node scripts/doctor-mac.js",
     "verify:mac": "node scripts/verify-mac-build.js && node scripts/doctor-mac.js",
     "tray-icons": "node scripts/make-tray-icons.js",
     "build:win": "electron-builder --win",

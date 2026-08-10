@@ -40,6 +40,30 @@ node scripts/package-win.js --install   # rebuild and reinstall the real app
 `scripts/smoke.js` writes screenshots to `%TEMP%\handrail-smoke` — look at them.
 This project's standing instruction is to verify visually rather than assert.
 
+## Standing rules for shipping
+
+- **Exactly one Handrail.app exists on the machine, always.** Not one *running*
+  — one **on disk**. Spotlight indexes every bundle it can see, so a leftover
+  `dist/mac/Handrail.app` shows up in Finder search next to the installed app
+  with nothing to tell them apart. Each carries its own ad-hoc signature under
+  the same bundle id, so picking the wrong one runs an app the Screen Recording
+  grant does not cover — and the app says it cannot see the screen while
+  Settings shows the toggle on. `build:mac` deletes the unpacked bundles after
+  verifying, and `npm run doctor` fails if any extra bundle exists. Never leave
+  build output launchable. [@maaz · 2026-08-10]
+
+- **`README.md` is updated as part of the change, not afterwards.** It is the
+  only page a new user reads. Any merged PR that changes what the product does,
+  how it is installed, or how it is verified updates the README in the same
+  commit. [@maaz · 2026-08-10]
+- **Every release ships every platform.** Both macOS `.dmg` files and the
+  Windows `.exe`, always, in the same release. Cut releases by pushing a tag and
+  letting `.github/workflows/release.yml` build both halves — never publish
+  hand-built artifacts for one platform. v0.1.4 went out macOS-only and left
+  Windows users with nothing to download. [@maaz · 2026-08-10]
+- **Release notes say what changed for a user**, not what changed in the code,
+  and name what is still broken or unverified.
+
 ## Style
 
 - Single-line bullet points in replies to the user. Plain language, no jargon.

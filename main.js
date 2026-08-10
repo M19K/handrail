@@ -218,7 +218,7 @@ function main() {
     }
     tray.setToolTip('Handrail');
     tray.setContextMenu(Menu.buildFromTemplate([
-      { label: 'Show Handrail', click: () => { launchOverlay(); windows.overlay.focus(); } },
+      { label: 'Show Handrail', click: () => { if (overlayOrOnboarding()) windows.overlay.focus(); } },
       { label: 'Hide', click: () => windows.hideOverlay() },
       { type: 'separator' },
       { label: 'Settings…', click: () => windows.showOnboarding() },
@@ -233,7 +233,13 @@ function main() {
     ]));
 
     // Clicking the icon itself is what most people try first.
-    tray.on('click', () => windows.toggleOverlay());
+    // Toggling only makes sense once the overlay exists. With no key there is
+    // nothing to toggle, and the honest answer is the setup window.
+    tray.on('click', () => {
+      if (!store || !store.getKey()) { windows.showOnboarding(); return; }
+      if (!windows.overlay) { launchOverlay(); return; }
+      windows.toggleOverlay();
+    });
 
     console.log(`[main] tray created from ${found}`);
   }
@@ -244,6 +250,28 @@ function main() {
    * Handrail", onSetupComplete, activate) added one that could never fire, and
    * eleven of them produced a MaxListenersExceededWarning.
    */
+  /**
+   * The overlay is never opened before there is a key to use it with.
+   *
+   * The tray and the hotkeys are registered before anything reads the key, on
+   * purpose — a boot failure used to leave nothing on screen at all. The cost
+   * was that clicking the tray icon during onboarding created a READY overlay
+   * bar ("What are you trying to do?") on top of the setup window the user had
+   * not finished. Two windows from one app, which reads exactly like two copies
+   * of Handrail running at once.
+   *
+   * `second-instance` already made this decision correctly and this path did
+   * not: one rule, two places, only one of them guarded. Now there is one.
+   */
+  function overlayOrOnboarding() {
+    if (!store || !store.getKey()) {
+      windows.showOnboarding();
+      return false;
+    }
+    launchOverlay();
+    return true;
+  }
+
   function launchOverlay() {
     if (!windows.overlay) {
       windows.createOverlay();
@@ -261,7 +289,12 @@ function main() {
    */
   function registerShortcuts() {
     const toggle = process.platform === 'darwin' ? 'Command+Shift+H' : 'Control+Shift+H';
-    if (!globalShortcut.register(toggle, () => windows.toggleOverlay())) {
+    const onToggle = () => {
+      if (!store || !store.getKey()) { windows.showOnboarding(); return; }
+      if (!windows.overlay) { launchOverlay(); return; }
+      windows.toggleOverlay();
+    };
+    if (!globalShortcut.register(toggle, onToggle)) {
       console.warn(`[main] could not register ${toggle} — another app has it`);
     }
 
