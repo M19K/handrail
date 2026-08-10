@@ -14,6 +14,14 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; }
 
+  /* The `hidden` attribute has to beat every `display` rule below it.
+     `hidden` is styled by the UA sheet, which any author rule outranks — so
+     `.notice { display: flex }` silently un-hid the key warning and it showed
+     on EVERY first run, telling people their key had been lost when they had
+     never entered one. `overlay.css` has carried this same line since it was
+     written; this file was the one that did not. */
+  [hidden] { display: none !important; }
+
   html, body {
     margin: 0; padding: 0; height: 100%;
     background: transparent;
@@ -141,6 +149,8 @@
   .notice svg { flex: none; margin-top: 1px; }
   .notice span { color: var(--text-secondary); }
 
+  .screen-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
+
   .field-help { margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--text-tertiary); line-height: var(--leading-normal); }
   .field-help a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--border-accent); cursor: pointer; }
 
@@ -249,17 +259,21 @@
         computer and is only ever sent to the provider it belongs to.
       </p>
 
-      <!-- Shown only when a saved key was found but could not be decrypted.
-           Without it this screen looks like a fresh install and the user is
-           left wondering why the key they already entered has vanished. -->
+      <!-- Shown only when a saved key was found but could not be used. Without
+           it this screen looks like a fresh install and the user is left
+           wondering why the key they already entered has vanished.
+
+           The text is set from onboarding.js, because there are two different
+           reasons and telling someone the wrong one is worse than saying
+           nothing. It used to be hard-coded to the Windows reason and shown
+           unconditionally, so a first-time Mac user was told their key had been
+           lost by "Windows regenerating its encryption store". -->
       <p class="notice" id="key-lost" hidden>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
           <path d="M12 7.5v5.5M12 16.2v.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        <span>Your saved key could not be read on this computer. This happens
-        when Windows regenerates its encryption store, and it cannot be undone.
-        Paste the key again and it will be saved fresh.</span>
+        <span id="key-lost-text"></span>
       </p>
 
       <label class="field-label" for="key">API key</label>
@@ -306,6 +320,17 @@
         </svg>
         <p id="screen-status-text">Handrail will ask your operating system for permission
           the first time it takes a screenshot.</p>
+      </div>
+
+      <!-- Only appear once the permission is actually known to be missing.
+           "Allow it in System Settings" is not a followable instruction: the
+           row is thirty deep in Privacy & Security and is not called what the
+           app calls it. And on macOS the permission is bound when the process
+           launches, so granting it changes nothing until Handrail restarts —
+           which nothing in the product used to say. -->
+      <div class="screen-actions" id="screen-actions" hidden>
+        <button class="btn btn--ghost" id="open-screen-settings">Open System Settings</button>
+        <button class="btn btn--primary" id="restart-handrail" hidden>Restart Handrail</button>
       </div>
 
       <div class="foot">

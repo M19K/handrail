@@ -1,6 +1,6 @@
 {
   "name": "handrail",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A desktop overlay that sees your screen and walks you through complex software, step by step.",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,9 @@
     "spike:arrow": "electron spike/arrow",
     "dev:renderer": "electron renderer/dev.js",
     "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
+    "build:mac": "electron-builder --mac && npm run verify:mac",
+    "verify:mac": "node scripts/verify-mac-build.js",
+    "tray-icons": "node scripts/make-tray-icons.js",
     "build:win": "electron-builder --win",
     "pack": "electron-builder --dir",
     "clean": "rimraf dist",
@@ -26,7 +28,7 @@
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "electron": "^29.1.0",
+    "electron": "^43.3.0",
     "electron-builder": "^26.15.3",
     "playwright-core": "^1.62.1",
     "rimraf": "^5.0.5"
@@ -38,6 +40,7 @@
       "output": "dist",
       "buildResources": "build"
     },
+    "afterPack": "scripts/afterpack-mac.js",
     "files": [
       "main.js",
       "preload.js",
@@ -46,6 +49,7 @@
       "design/tokens.css",
       "design/brand/*.svg",
       "src/**/*",
+      "assets/**/*",
       "!renderer/dev.js",
       "!renderer/mock-bridge.js",
       "!spike/**/*",
@@ -65,7 +69,7 @@
         }
       ],
       "darkModeSupport": true,
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "extendInfo": {
         "NSScreenCaptureUsageDescription": "Handrail takes a screenshot when you ask it a question, so it can answer about what is on your screen.",

@@ -227,16 +227,77 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
    * than in the middle of their first real question.
    */
   handleSetup('hr:setup:screen-access', async () => {
-    if (process.platform === 'darwin') {
-      const status = systemPreferences.getMediaAccessStatus('screen');
-      if (status === 'granted') return { granted: true };
+    if (process.platform !== 'darwin') {
+      // No OS gate to satisfy. Prove capture works rather than claiming it.
+      try {
+        const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
+        return { granted: sources.length > 0, status: 'granted' };
+      } catch (_) {
+        return { granted: false, status: 'denied' };
+      }
     }
+
+    /**
+     * macOS is the only platform where this question has a real answer, and
+     * `getSources()` is not it.
+     *
+     * The old code returned `sources.length > 0`. On macOS `getSources()`
+     * returns a source whether or not screen recording is permitted — denied,
+     * you get the entry with a blank picture. So it reported "granted" every
+     * time, on a machine that had never been asked, and onboarding's "your OS
+     * has not granted access yet" branch was unreachable. The failure surfaced
+     * later as "Failed to get sources" in the middle of the user's first real
+     * question.
+     *
+     * `getMediaAccessStatus('screen')` is the authority. `getSources()` is
+     * still called, but only for its side effect: it is what makes macOS put
+     * the permission prompt up the first time, which is the whole reason this
+     * runs during onboarding instead of mid-task.
+     */
+    const before = systemPreferences.getMediaAccessStatus('screen');
+    if (before === 'granted') {
+      // Granted at OS level does not mean THIS process can capture: the
+      // decision is bound at launch. Confirm, and if it fails say plainly that
+      // a restart is what fixes it rather than looping the user on Try again.
+      try {
+        await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
+        return { granted: true, status: 'granted' };
+      } catch (_) {
+        return { granted: false, status: 'granted', needsRestart: true };
+      }
+    }
+
     try {
-      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
-      return { granted: sources.length > 0 };
-    } catch (_) {
-      return { granted: false };
-    }
+      await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
+    } catch (_) { /* being refused here is a legitimate answer, not an error */ }
+
+    const after = systemPreferences.getMediaAccessStatus('screen');
+    // macOS records the grant, but the running process keeps the access it was
+    // launched with — so answering the prompt still needs a restart.
+    return { granted: false, status: after, needsRestart: after === 'granted' };
+  });
+
+  /**
+   * Open the exact System Settings pane the permission lives in.
+   *
+   * "Allow it in System Settings" is not an instruction a non-technical person
+   * can follow — Privacy & Security has thirty rows and the one they need is
+   * called "Screen & System Audio Recording", which is not what the app calls
+   * it. This puts them on the right screen.
+   */
+  handleSetup('hr:setup:open-screen-settings', () => {
+    if (process.platform !== 'darwin') return { opened: false };
+    shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+    return { opened: true };
+  });
+
+  /**
+   * Restart Handrail, because on macOS that is the only way to pick up a
+   * screen-recording permission granted after launch.
+   */
+  handleSetup('hr:setup:relaunch', () => {
+    app.relaunch();
+    app.exit(0);
   });
 
   handleSetup('hr:setup:complete', () => {

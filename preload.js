@@ -92,6 +92,10 @@ contextBridge.exposeInMainWorld('handrail', {
     validateKey: (key) => call('hr:setup:validate', key),
     saveKey: (key) => call('hr:setup:save', key),
     requestScreenAccess: () => call('hr:setup:screen-access'),
+    // Puts the user on the exact Privacy & Security pane, and restarts
+    // Handrail so macOS re-reads a permission granted after launch.
+    openScreenSettings: () => call('hr:setup:open-screen-settings'),
+    relaunch: () => call('hr:setup:relaunch'),
     complete: () => call('hr:setup:complete'),
     // A destination NAME, not a URL — see ipc.js. The renderer cannot choose
     // where the browser goes.

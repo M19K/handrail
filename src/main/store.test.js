@@ -29,7 +29,7 @@ const originalLoad = Module._load;
 Module._load = function stubElectron(request, ...rest) {
   if (request === 'electron') {
     return {
-      app: { getPath: () => DATA, isPackaged: true },
+      app: { getPath: () => DATA, isPackaged: true, getVersion: () => '0.0.0-test' },
       safeStorage: { isEncryptionAvailable: () => false },
     };
   }

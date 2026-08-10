@@ -35,6 +35,7 @@ const { Llm } = require('./src/main/llm');
 const { Windows } = require('./src/main/windows');
 const { TurnController } = require('./src/main/turn');
 const ipc = require('./src/main/ipc');
+const log = require('./src/main/log');
 
 // Process-name masking, inherited from upstream and kept deliberately: the
 // overlay is excluded from screen capture, and a process list entry reading
@@ -72,6 +73,20 @@ function main() {
   });
 
   app.whenReady().then(() => {
+    log.start(app.getPath('userData'), {
+      version: app.getVersion(),
+      packaged: app.isPackaged,
+      platform: `${process.platform} ${process.arch}`,
+      electron: process.versions.electron,
+    });
+    log.captureConsole();
+
+    // A background app with no Dock icon in production and one in development
+    // is two different products to test. LSUIElement gives the packaged build
+    // no Dock presence; this gives the same to `npm start`, so what gets tested
+    // is what gets shipped.
+    if (process.platform === 'darwin' && app.dock) app.dock.hide();
+
     store = new Store();
     llm = new Llm(() => store.getKey(), () => store.getSettings().model);
     windows = new Windows(store);
@@ -100,14 +115,35 @@ function main() {
       onSetupComplete: () => launchOverlay(),
     });
 
+    /**
+     * The tray and the hotkeys come FIRST, before anything that reads the key.
+     *
+     * Order is load-bearing now. It used to be the other way round, and the
+     * consequence was the worst failure this app has shipped: `store.getKey()`
+     * blocked inside a macOS keychain call, and because that happened before
+     * these two lines there was no tray icon, no global hotkey and no window.
+     * A live process with no way to reach it and no way to quit it.
+     *
+     * `store.js` fixes the block itself. This fixes the blast radius: whatever
+     * else goes wrong below, Handrail is already reachable by hotkey and
+     * already has a visible tray icon with a working Quit in it.
+     */
+    registerShortcuts();
+    createTray();
+
     // Onboarding runs when there is no key to work with. That is the honest
     // test — a settings flag can say setup is complete while the key it saved
     // has since been revoked or failed to decrypt.
-    if (store.getKey()) launchOverlay();
-    else windows.showOnboarding();
-
-    registerShortcuts();
-    createTray();
+    try {
+      if (store.getKey()) launchOverlay();
+      else windows.showOnboarding();
+    } catch (err) {
+      // Never end a boot with nothing on screen. If deciding which window to
+      // open is what failed, open the one that can recover — onboarding can
+      // re-enter a key, and it carries the quit button.
+      console.error('[main] could not open the first window:', err);
+      windows.showOnboarding();
+    }
   });
 
   /**
@@ -119,32 +155,56 @@ function main() {
    * has forgotten the shortcut — the tray is the thing you can always find.
    */
   function createTray() {
-    // Purpose-sized PNGs first. Falling back to the 256x256 .ico works, but
-    // Windows squeezes it into a 16px slot and the mark turns to mush — which
-    // is a good way to be invisible in a tray full of other icons.
-    const sizes = process.platform === 'darwin' ? ['16', '32'] : ['32', '16'];
-    const candidates = [
-      ...sizes.flatMap((s) => [
-        path.join(__dirname, 'assets', `tray-${s}.png`),   // packaged
-        path.join(__dirname, 'build', `icon-${s}.png`),    // running from source
-      ]),
-      path.join(__dirname, 'icon.ico'),
-    ];
+    /**
+     * macOS and Windows want genuinely different artwork, not two sizes of one.
+     *
+     * macOS  a TEMPLATE image — alpha only, no colour. The menu bar re-tints the
+     *        silhouette per theme. `assets/trayTemplate.png` is drawn for this
+     *        by `scripts/make-tray-icons.js`, and `nativeImage` picks up the
+     *        `@2x` file beside it on its own.
+     *
+     *        0.1.3 pointed this at the full app icon and called
+     *        `setTemplateImage(true)` on it. That icon is 98% opaque, so the
+     *        template was a filled blob and the mark was invisible in the menu
+     *        bar. Colour art can never be a template, at any size.
+     *
+     * Windows the colour mark, at 32px. Falling back to the 256x256 .ico works,
+     *        but Windows squeezes it into a 16px slot and the mark turns to
+     *        mush — a good way to be invisible in a tray full of other icons.
+     */
+    const isMac = process.platform === 'darwin';
+    const candidates = isMac
+      ? [path.join(__dirname, 'assets', 'trayTemplate.png')]
+      : [
+        ...['32', '16'].flatMap((s) => [
+          path.join(__dirname, 'assets', `tray-${s}.png`),   // packaged
+          path.join(__dirname, 'build', `icon-${s}.png`),    // running from source
+        ]),
+        path.join(__dirname, 'icon.ico'),
+      ];
 
     const found = candidates.find((p) => fs.existsSync(p));
     if (!found) {
-      console.warn('[main] no tray icon on disk; tray not created');
+      // Loud, because of what it cost last time. The packaged 0.1.3 mac build
+      // hit this line — `build.files` did not ship the artwork — and with
+      // LSUIElement also removing the Dock icon, the app had no visible
+      // presence anywhere in the system. `npm test` now asserts the files
+      // exist and are listed in `build.files`, so this should be unreachable.
+      console.error(
+        `[main] NO TRAY ICON FOUND — looked in: ${candidates.join(', ')}. ` +
+        'The app will have no menu bar presence. This is a packaging bug.',
+      );
       return;
     }
 
     let image = nativeImage.createFromPath(found);
     if (image.isEmpty()) {
-      console.warn(`[main] tray icon at ${found} would not decode; tray not created`);
+      console.error(`[main] tray icon at ${found} would not decode; tray not created`);
       return;
     }
-    if (process.platform === 'darwin') {
-      image = image.resize({ width: 16, height: 16 });
-      // Template images follow the menu bar theme instead of staying mint.
+    if (isMac) {
+      // Already 16x16 with a 32x32 @2x beside it, so no resize: scaling a
+      // template down is what softened the mark before.
       image.setTemplateImage(true);
     }
 

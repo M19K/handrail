@@ -678,6 +678,27 @@ function friendly(err) {
   const is = (...codes) => codes.some((c) => status === c || has(c));
 
   if (err && err.code === 'NO_KEY') return 'No API key set yet. Add one in Settings.';
+
+  /**
+   * Screen capture was refused by the OS.
+   *
+   * `desktopCapturer.getSources()` throws a bare "Failed to get sources." and
+   * that string used to go straight to the user, above a "Try again" button
+   * that could never work — macOS decides screen-recording access once per
+   * process at launch, so a permission granted while Handrail is running does
+   * nothing until it restarts. Someone who has just granted the permission and
+   * watched it fail anyway has no way to guess that.
+   *
+   * Observed on 2026-08-09: permission granted mid-session, "Try again"
+   * failed identically every time, and a restart fixed it instantly.
+   */
+  if (/Failed to get sources|No screen sources available|returned an empty image/i.test(msg)) {
+    return process.platform === 'darwin'
+      ? 'Handrail cannot see your screen. Allow it under Privacy & Security → Screen ' +
+        '& System Audio Recording, then restart Handrail — macOS only checks that ' +
+        'permission when the app starts.'
+      : 'Handrail could not capture your screen. Try again in a moment.';
+  }
   if (/Invalid API key/i.test(msg) || is(401, 403)) return 'That API key was rejected. Check it in Settings.';
   if (/Rate limit/i.test(msg) || is(429)) return 'The provider is rate-limiting you. Wait a moment and try again.';
   if (/insufficient|credit|quota/i.test(msg)) return 'Your provider account is out of credit.';

@@ -8,7 +8,60 @@ Last updated: 2026-08-09
 
 ---
 
-## ⏭ SESSION HANDOFF — read this first (2026-08-09)
+## ⏭ SESSION HANDOFF — read this first (2026-08-09, macOS pass)
+
+### macOS was run for the first time, and is now fixed
+
+Every release since 0.1.0 built a `.dmg` in CI that nobody had ever opened. One
+was opened on 2026-08-09 on a Mac mini M4, macOS 26.5.2. **It could not be
+installed, and once forced past Gatekeeper it drew no window.**
+
+Running from source was already fine — all three suites passed on macOS
+unmodified, and the overlay, both hotkeys, content protection and key
+persistence all worked first try. The whole failure was in the packaged artifact,
+which nothing in the repo had ever executed.
+
+Fixed in **0.1.4**. Full detail in `CHANGELOG.md`; the parity matrix in
+`PLATFORM.md` is now written from observation instead of from reading the code.
+The short version:
+
+- The `.dmg` was **malformed, not merely unsigned** — Gatekeeper said "damaged
+  and can't be opened" with Move to Trash as the only button. Now ad-hoc signed,
+  and the build fails if the signature does not verify.
+- The app **launched and did nothing**: ASAR-integrity skew between
+  electron-builder 26 and Electron 29 (fixed by moving to Electron 43), and
+  `safeStorage` blocking forever on a keychain item written by a different build.
+- The packaged app **had no menu bar icon** (`build.files` shipped no artwork)
+  and `LSUIElement` removes the Dock icon, so it had no presence anywhere.
+- The tray icon was a **solid blob** — a 98%-opaque app icon used as a template.
+- The "your key could not be read" banner showed on **every** first run, on every
+  platform, blaming Windows.
+
+### The trap that made all of this expensive
+
+**Three green suites and an unusable artifact co-existed for four releases.**
+`npm test`, `scripts/smoke.js` and `npm run qa` all execute the **repo**. A file
+missing from `build.files`, a wrong `Info.plist`, a bad signature and an ASAR
+hash mismatch are every one of them invisible to all three.
+
+`npm run verify:mac` is the answer and it is wired into `npm run build:mac`. It
+launches the built bundle and fails if it cannot get far enough to write one line
+of its own log. **Run it on the artifact before publishing anything.**
+
+Handrail now writes `<userData>/handrail.log`. `console.log` in a packaged mac
+app reaches nobody, which is why a boot failure produced no window, no crash
+report and no output at all.
+
+### Still untested on macOS — real gaps, not oversights
+
+- **Retina.** The test machine is 1920×1080 at `scaleFactor: 1`. The 2x arrow
+  geometry in `src/main/geometry.js` and `src/main/capture.js` is still theory.
+- **Multi-monitor**, especially mixed scale factors.
+- **A live arrow on a real control.** The renderer is covered by smoke
+  (`7-arrow.png`); no real question returned a `target`.
+- **Intel/x64** — built, never run. The same state that produced everything above.
+
+---
 
 ### Where it is
 
