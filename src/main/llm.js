@@ -130,11 +130,38 @@ function targetFrom(parsed) {
   return '';
 }
 
+/**
+ * The shape `Llm` needs from a provider client.
+ *
+ * Written down because `makeClient` used to be documented as returning
+ * `object`, which told a reader nothing and told a typechecker less — every
+ * `client.models.…` call read as an error against a type that allowed no
+ * properties at all. This is also the contract a test double has to meet, and
+ * `respond()` is only testable because a double can be passed in.
+ *
+ * @typedef {{ text?: string }} ModelResponse the only field we read off a reply
+ *
+ * @typedef {object} ProviderClient
+ * @property {object} models
+ * @property {(req: object) => Promise<ModelResponse>} models.generateContent
+ * @property {(req: object) => Promise<AsyncIterable<ModelResponse>>} models.generateContentStream
+ */
+
+/**
+ * What a single model request can be tuned with.
+ *
+ * @typedef {object} RequestOptions
+ * @property {number} [temperature]
+ * @property {number} [maxOutputTokens]
+ * @property {AbortSignal} [signal] threaded all the way to fetch, so Escape
+ *   actually cancels the upstream call instead of only discarding its reply
+ */
+
 class Llm {
   /**
    * @param {() => string|null} getKey
    * @param {() => string} getModel
-   * @param {(opts: {apiKey: string}) => object} [makeClient] how to build the
+   * @param {(opts: {apiKey: string}) => ProviderClient} [makeClient] how to build the
    *   provider client. Defaults to the real OpenRouter one; the only reason it
    *   is injectable is that `respond()` was the single load-bearing function in
    *   the product with no test at all — the client was constructed inside
@@ -150,7 +177,9 @@ class Llm {
   _client() {
     const key = this.getKey();
     if (!key) {
-      const err = new Error('No API key set. Add one in Settings.');
+      const err = /** @type {Error & { code?: string }} */ (
+        new Error('No API key set. Add one in Settings.')
+      );
       err.code = 'NO_KEY';
       throw err;
     }
@@ -161,6 +190,10 @@ class Llm {
    * `signal` is threaded all the way to fetch. Without it, cancelling a slow
    * vision call left the request running and billed — only the reply was
    * discarded — so Escape looked like a cancel and was not one.
+   *
+   * @param {string} system
+   * @param {object[]} parts
+   * @param {RequestOptions} [opts]
    */
   _req(system, parts, { temperature = 0.2, maxOutputTokens = 1400, signal } = {}) {
     return {

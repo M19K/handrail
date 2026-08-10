@@ -1,0 +1,30 @@
+{
+  "//": [
+    "Type checking for a plain-JavaScript project.",
+    "",
+    "Handrail has no TypeScript and is not gaining any. What this buys instead is",
+    "the half of a type checker that works without annotations: calls to functions",
+    "that do not exist, properties read off the wrong shape, arity mistakes, and",
+    "typos in an Electron API name. `strict` is off deliberately — turning it on",
+    "an unannotated codebase produces thousands of implicit-any complaints that",
+    "say nothing about correctness and would guarantee nobody ever runs this.",
+    "",
+    "Renderer files are excluded: they run in a DOM context against a preload",
+    "bridge injected at runtime, so the checker cannot see `window.handrail` and",
+    "reports every use of it as an error."
+  ],
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "target": "ES2022",
+    "module": "node18",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
+    "types": ["node"]
+  },
+  "include": ["main.js", "preload.js", "preload-arrow.js", "src/**/*.js", "scripts/**/*.js"],
+  "exclude": ["node_modules", "dist", "renderer", "spike", "tests", "**/*.test.js"]
+}

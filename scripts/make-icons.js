@@ -22,7 +22,7 @@
  * build/icon.png automatically and derives .ico and .icns from it.
  */
 
-const { app, BrowserWindow, nativeImage } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
 

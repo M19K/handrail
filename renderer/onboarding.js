@@ -30,7 +30,6 @@ const detected = $('detected');
 const keyContinue = $('key-continue');
 
 let step = 0;
-let validated = null;   // { valid, provider } for the key currently in the box
 
 function show(index) {
   step = Math.max(0, Math.min(panels.length - 1, index));
@@ -84,7 +83,6 @@ function setDetected(mode, text) {
 
 keyInput.addEventListener('input', () => {
   const value = keyInput.value.trim();
-  validated = null;
 
   if (!value) {
     keyField.removeAttribute('data-state');
@@ -128,7 +126,6 @@ async function advanceFromKey() {
 
   try {
     const result = await bridge.setup.validateKey(value);
-    validated = result;
 
     if (!result.valid) {
       keyField.setAttribute('data-state', 'invalid');

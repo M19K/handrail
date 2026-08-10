@@ -16,6 +16,11 @@
     "build:win": "electron-builder --win",
     "pack": "electron-builder --dir",
     "clean": "rimraf dist",
+    "lint": "eslint .",
+    "lint:shell": "shellcheck setup.sh scripts/*.sh",
+    "deadcode": "knip",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run lint && npm run typecheck && npm run deadcode && npm test",
     "qa": "node --test --test-concurrency=1 tests/qa/*.test.js",
     "compare-models": "electron scripts/compare-models.js",
     "doctor": "node scripts/doctor-mac.js"
@@ -29,10 +34,15 @@
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "electron": "^43.3.0",
     "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5",
+    "globals": "^17.9.0",
+    "knip": "^6.32.1",
     "playwright-core": "^1.62.1",
-    "rimraf": "^5.0.5"
+    "rimraf": "^5.0.5",
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "com.handrail.app",

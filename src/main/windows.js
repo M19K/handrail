@@ -22,7 +22,7 @@
  * hidden constantly.
  */
 
-const { BrowserWindow, screen, app } = require('electron');
+const { BrowserWindow, screen } = require('electron');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');

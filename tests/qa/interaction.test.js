@@ -33,7 +33,6 @@ async function overlay(opts = {}) {
   return { app, win };
 }
 
-const view = (win) => win.evaluate(() => document.body.dataset.view || document.documentElement.dataset.view || null);
 
 test('the bar can be typed into and submitted with Enter alone', async () => {
   const { app, win } = await overlay();
@@ -210,7 +209,7 @@ test('launching Handrail again shows it — it never hides it', async () => {
   // Double-clicking the desktop shortcut while Handrail is already open must
   // bring it forward. Toggling means the icon the user just clicked makes the
   // app disappear, which reads as the app being broken.
-  const { app, win } = await overlay();
+  const { app } = await overlay();
   try {
     await inMain(app, async ({ BrowserWindow }) => {
       const w = BrowserWindow.getAllWindows().find((x) => x.webContents.getURL().includes('overlay.html'));

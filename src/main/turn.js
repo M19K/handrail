@@ -40,7 +40,20 @@ class TurnController {
    *   of the screenshot; returns a restore function
    */
   constructor(deps) {
-    Object.assign(this, deps);
+    // Assigned one by one rather than with `Object.assign(this, deps)`.
+    // Object.assign copies whatever it is handed, so a caller passing a stray
+    // key silently grew a property on the controller, and every dependency was
+    // invisible to tooling — a typechecker cannot see through it, which is why
+    // 43 of this file's reported errors were "property does not exist" on
+    // properties that plainly do. Naming them is also the only list of what
+    // this class actually needs.
+    this.llm = deps.llm;
+    this.store = deps.store;
+    this.getOverlay = deps.getOverlay;
+    this.emit = deps.emit;
+    this.point = deps.point;
+    this.excludeFromCapture = deps.excludeFromCapture;
+
     this.turnId = 0;
     this.active = null;   // { id, cancelled }
     this.task = null;     // { taskId, steps, activeIndex, display }

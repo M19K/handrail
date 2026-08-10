@@ -244,7 +244,7 @@ function findRcedit() {
  * needs no elevation. Installing there rather than shortcutting into the repo
  * means the shortcut survives the source tree being moved or deleted.
  */
-function install(builtExe) {
+function install() {
   const target = path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Handrail');
   console.log(`\ninstalling to ${target}`);
 
@@ -277,9 +277,10 @@ function install(builtExe) {
 // ---------------------------------------------------------------------------
 
 try {
-  const exe = build();
+  build();
   if (INSTALL) {
-    const result = install(exe);
+    // install() derives the exe path from its own target directory.
+    const result = install();
     console.log('\ndone. To remove:');
     console.log(`  del "${result.link}"`);
     console.log(`  rmdir /s /q "${result.target}"`);

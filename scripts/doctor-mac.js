@@ -136,7 +136,8 @@ function checkBundles() {
       'Harmless if it was only indexed; a problem if it was ever launched, since\n'
       + '    that puts a SECOND signature under the same bundle id as the installed\n'
       + '    app and a Screen Recording grant is keyed to the signature. To be sure:\n'
-      + '    lsregister -u <path> && rm -rf dist/mac dist/mac-arm64');
+      + '    lsregister -u <path> && rm -rf dist/mac dist/mac-arm64\n'
+      + `    then re-grant cleanly: tccutil reset ScreenCapture ${BUNDLE_ID}`);
   } else if (!QUIET) {
     if (installed.length) {
       note('ok', 'One installed Handrail.app',
