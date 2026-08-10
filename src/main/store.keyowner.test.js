@@ -174,7 +174,16 @@ test('saving records the current build as the owner', () => {
 
   const record = JSON.parse(fs.readFileSync(path.join(dir, 'key.dat'), 'utf8'));
   assert.equal(record.enc, 'os');
-  assert.equal(record.owner, `app-${VERSION}`);
+
+  // Prefix, not the whole string. A packaged build appends the id stamped in by
+  // `scripts/beforepack-build-id.js`, and whether `assets/build-id.txt` happens
+  // to be sitting in the working tree from an earlier build is not something
+  // this test should depend on. What matters is that the owner is recorded and
+  // names this version.
+  assert.ok(
+    record.owner.startsWith(`app-${VERSION}`),
+    `owner ${record.owner} should start with app-${VERSION}`,
+  );
 });
 
 test('a dev run and a packaged run are different owners', () => {

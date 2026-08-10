@@ -693,10 +693,25 @@ function friendly(err) {
    * failed identically every time, and a restart fixed it instantly.
    */
   if (/Failed to get sources|No screen sources available|returned an empty image/i.test(msg)) {
+    /**
+     * The second instruction is the one people need and would never guess.
+     *
+     * macOS ties a screen-recording grant to the app's CODE SIGNATURE, and
+     * Handrail's ad-hoc signature changes with every build. After an update,
+     * System Settings still lists Handrail and the switch is still on — but the
+     * process asking is not the one that was granted, so it is refused anyway.
+     * Turning the switch off and on re-grants it against the new signature.
+     *
+     * Telling someone to enable a permission that is visibly already enabled is
+     * how you lose them. Observed live on 2026-08-09: the switch was on, and
+     * capture failed.
+     */
     return process.platform === 'darwin'
-      ? 'Handrail cannot see your screen. Allow it under Privacy & Security → Screen ' +
-        '& System Audio Recording, then restart Handrail — macOS only checks that ' +
-        'permission when the app starts.'
+      ? 'Handrail cannot see your screen. Open Privacy & Security → Screen & System ' +
+        'Audio Recording. If Handrail is not listed, allow it. If it IS listed and ' +
+        'already switched on, switch it off and on again — macOS ties that permission ' +
+        'to the exact version of the app, so an update leaves it looking granted when ' +
+        'it is not. Then quit Handrail and open it again.'
       : 'Handrail could not capture your screen. Try again in a moment.';
   }
   if (/Invalid API key/i.test(msg) || is(401, 403)) return 'That API key was rejected. Check it in Settings.';

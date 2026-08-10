@@ -207,8 +207,11 @@ $('finish').addEventListener('click', async () => {
    * anyone would guess.
    */
   $('screen-status-text').textContent = status.needsRestart
-    ? 'Screen access is allowed, but Handrail has to restart before it can use it — ' +
-      'macOS only checks that permission when the app starts.'
+    ? 'macOS says screen access is allowed, but Handrail cannot actually use it yet. ' +
+      'Restart Handrail below. If it still cannot see your screen, switch Handrail off ' +
+      'and on again in Screen & System Audio Recording — macOS ties that permission to ' +
+      'the exact version of the app, so an update can leave it looking granted when it ' +
+      'is not.'
     : 'Handrail does not have screen access yet. Allow it under Privacy & Security → ' +
       'Screen & System Audio Recording, then restart Handrail.';
 
