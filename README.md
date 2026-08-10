@@ -50,8 +50,24 @@ platforms — two `.dmg` files for macOS (`-arm64` for Apple Silicon, the other
 for Intel) and the Windows `.exe`. If a release is ever missing your platform,
 that is a mistake in the release, not a decision.
 
-**Windows** — run the `.exe`. It is unsigned, so SmartScreen warns on first
-run: **More info** → **Run anyway**.
+**Windows** — there are two. `Handrail-Setup-x.y.z.exe` installs it properly
+with a Start-menu and desktop shortcut. `Handrail.x.y.z.exe` is portable — it
+runs from wherever you put it and installs nothing.
+
+Handrail is unsigned, so SmartScreen warns on first run: **More info** →
+**Run anyway**.
+
+If you have **Smart App Control** turned on (Windows 11 only), it can refuse to
+start the app outright — and unlike SmartScreen it offers no way through. Use
+the **installer** rather than the portable build; the installer is accepted
+where the portable one may not be. To check whether it is on: Windows Security
+→ **App & browser control** → **Smart App Control**. Code signing is what
+actually fixes this, and it costs a few hundred pounds a year, so it is not in
+place for a free project.
+
+Handrail stays out of the taskbar and lives in the **system tray** instead.
+Windows hides new tray icons in the overflow flyout, so click the **^** arrow
+near the clock and drag the Handrail mark out to keep it visible.
 
 **macOS** — open the `.dmg` and drag Handrail to Applications. It is not
 notarised, so the first launch is refused with *"Apple could not verify
@@ -65,6 +81,19 @@ After that it opens normally, forever. You only do this once.
 
 Handrail has **no Dock icon** — it lives in the menu bar. Look for the rail mark
 at the top right of your screen, or press **⌘⇧H**.
+
+### Keyboard shortcuts
+
+| | macOS | Windows |
+|---|---|---|
+| Show or hide Handrail | **⌘⇧H** | **Ctrl+Shift+H** |
+| Hide it immediately | **⌘⇧⎋** | **Ctrl+Alt+H** |
+
+The second one is the panic key, for when the overlay is on screen and you are
+sharing it. It puts Handrail away and clears any arrow it had drawn.
+
+On Windows it is **not** Ctrl+Shift+Esc — Windows reserves that for Task
+Manager and will not hand it to any application.
 
 You will need an API key from [OpenRouter](https://openrouter.ai/keys), OpenAI
 or Anthropic. Onboarding asks for one and works out which is which from the key

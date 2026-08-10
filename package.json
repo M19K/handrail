@@ -13,7 +13,7 @@
     "build:mac": "electron-builder --mac && node scripts/verify-mac-build.js && rimraf dist/mac dist/mac-arm64 && node scripts/doctor-mac.js",
     "verify:mac": "node scripts/verify-mac-build.js && node scripts/doctor-mac.js",
     "tray-icons": "node scripts/make-tray-icons.js",
-    "build:win": "electron-builder --win",
+    "build:win": "electron-builder --win && node scripts/verify-win-build.js && rimraf dist/win-unpacked && node scripts/doctor-win.js",
     "pack": "electron-builder --dir",
     "clean": "rimraf dist",
     "lint": "eslint .",
@@ -22,7 +22,8 @@
     "check": "npm run lint && npm run typecheck && npm run deadcode && npm test",
     "qa": "node --test --test-concurrency=1 tests/qa/*.test.js",
     "compare-models": "electron scripts/compare-models.js",
-    "doctor": "node scripts/doctor-mac.js"
+    "doctor": "node scripts/doctor.js",
+    "verify:win": "node scripts/verify-win-build.js && node scripts/doctor-win.js"
   },
   "author": {
     "name": "Maaz Kazi",

@@ -222,6 +222,32 @@ function main() {
     fs.writeFileSync(file, encodePng(render(size), size));
     console.log(`wrote ${path.relative(path.join(__dirname, '..'), file)} (${size}x${size})`);
   }
+
+  /**
+   * Windows wants the COLOUR mark, so it gets the app icon rather than the
+   * alpha-only template above.
+   *
+   * These live in `assets/` next to the macOS artwork for one reason: `assets/`
+   * is what `build.files` ships. `build/` is not, and `icon.ico` is not, so
+   * every one of the three places `main.js` looks was missing from the shipped
+   * Windows build — the app logged "NO TRAY ICON FOUND" and ran with no tray at
+   * all. `scripts/package-win.js` copies the same files by hand, which is why
+   * every LOCAL build had a tray and the released one never did, from 0.1.0 to
+   * 0.1.5 inclusive.
+   *
+   * Copied rather than re-rendered so the tray mark and the app icon can never
+   * drift apart.
+   */
+  for (const size of [16, 32]) {
+    const from = path.join(__dirname, '..', 'build', `icon-${size}.png`);
+    const to = path.join(OUT_DIR, `tray-${size}.png`);
+    if (!fs.existsSync(from)) {
+      console.warn(`  skipped tray-${size}.png — ${path.relative(path.join(__dirname, '..'), from)} is missing`);
+      continue;
+    }
+    fs.copyFileSync(from, to);
+    console.log(`wrote ${path.relative(path.join(__dirname, '..'), to)} (${size}x${size}, Windows colour mark)`);
+  }
 }
 
 main();

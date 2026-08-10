@@ -8,6 +8,12 @@ and what will bite at ship time.
 running macOS 26.5.2. Rows marked verified were watched on screen. Rows still
 marked untested are genuinely untested — see "Still untested" at the bottom.
 
+**Windows was audited against the SHIPPED artifact on 2026-08-10**, by
+downloading `Handrail.0.1.5.exe` from the release and running it on Windows 11
+Home 26200. That single act found two defects that six releases and three green
+test suites had all missed. Windows rows below say what was observed, not what
+the code claims — where something is still assumed, it says so.
+
 ---
 
 ## Feature parity matrix
@@ -17,15 +23,17 @@ marked untested are genuinely untested — see "Still untested" at the bottom.
 | Capture exclusion | `WDA_EXCLUDEFROMCAPTURE` | `NSWindowSharingNone` | Both via `setContentProtection()` — `src/main/windows.js:196` and `:231`. **Verified on macOS**: the overlay is genuinely absent from a screen capture, and reappears when the setting is turned off |
 | Always-on-top overlay | ✅ | ✅ | **Verified on macOS** — draws over the frontmost window |
 | Click-through | ✅ | ✅ | Electron `setIgnoreMouseEvents` |
-| Global hotkeys | ✅ | ✅ **no Accessibility permission needed** | **Verified on macOS.** ⌘⇧H and ⌘⇧⎋ both register; ⌘⇧H beats Finder's own Go→Home while Handrail runs |
+| Global hotkeys | ⚠️ toggle yes, panic key **had to change** | ✅ **no Accessibility permission needed** | **Verified on both.** macOS: ⌘⇧H and ⌘⇧⎋ both register. Windows: `Ctrl+Shift+H` registers, but `Ctrl+Shift+Escape` **returns false — Windows reserves it for Task Manager.** Shipped that way 0.1.0–0.1.5 with the return value ignored, so there was no panic key and no warning. Now `Ctrl+Alt+H` |
 | Screen capture | ✅ | ⚠️ Needs Screen Recording permission **and a restart after granting it** | **Verified on macOS.** macOS binds the decision at process launch, so granting it mid-session does nothing until Handrail restarts. Onboarding detects this and offers a Restart button |
-| Menu bar / tray icon | Colour mark, 32px | **Template image, alpha only** | Different artwork, not a different size — see "The tray icon" |
+| Menu bar / tray icon | Colour mark, 32px | **Template image, alpha only** | Different artwork, not a different size — see "The tray icon". **Both platforms shipped without it.** macOS 0.1.0–0.1.3, Windows 0.1.0–0.1.5: `build.files` ships `assets/**` and the Windows art was never in `assets/` — `scripts/package-win.js` copied it by hand, so every local build had a tray and every released one did not. Fixed by committing `assets/tray-16.png` and `tray-32.png`; `scripts/verify-win-build.js` now fails the build if it happens again |
 | Dock presence | Taskbar entry | **None** (`LSUIElement`) | **Verified.** No Dock icon, no app-switcher entry, so the menu bar icon and ⌘⇧H are the *only* ways back |
 | API key at rest | DPAPI, scoped to the **user** | Keychain, scoped to the **code signature** | Not the same guarantee — see "The keychain" |
 | Microphone | n/a | n/a | **Cut from v1** with speech. The Info.plist keys are deleted at build time |
 | System audio capture | Native | ❌ Requires a loopback driver (BlackHole/Soundflower) | **Unsolved**, and moot while speech is cut |
 | Process-name masking | ✅ ("Terminal") | Untested | — |
-| Code signing | Optional (SmartScreen warning) | **Ad-hoc signed**; Developer ID + notarisation still needed | See below |
+| Code signing | ⚠️ worse than "a SmartScreen warning" | **Ad-hoc signed**; Developer ID + notarisation still needed | **Observed on Windows 11 with Smart App Control enforced:** it refused to launch a freshly built unsigned `Handrail.exe` outright, with no "Run anyway" — SmartScreen's override does not apply. The NSIS installer built from the same output *was* allowed, and the downloaded release portable ran. So the installer is the safer thing to hand people. Signing is the only real fix |
+| Verifying the shipped artifact | `scripts/verify-win-build.js` | `scripts/verify-mac-build.js` | Both launch the packaged app and read its own log. Wired into `build:*` and into CI. The Windows one is the only check in the repo that could have caught the missing tray |
+| Duplicate installs | `scripts/doctor-win.js` | `scripts/doctor-mac.js` | `npm run doctor` picks the right one. Windows found **three** launchable copies on the author's machine, with the desktop shortcut pointing at a build three releases old |
 
 ---
 

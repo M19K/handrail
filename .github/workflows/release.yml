@@ -67,6 +67,17 @@ jobs:
         if: matrix.platform == 'mac'
         run: node scripts/verify-mac-build.js
 
+      # Windows had no equivalent, and it cost exactly what you would expect:
+      # every release from 0.1.0 to 0.1.5 shipped a Windows build with NO TRAY
+      # ICON, while 132 unit tests, every smoke check and 29 Playwright tests
+      # were green — because all of them run the repo and none of them run the
+      # installer. `assets/` held only the macOS artwork, and the local build
+      # script copies the Windows files by hand, so it never failed on a
+      # developer machine. Only the shipped thing was broken.
+      - name: Verify the packaged Windows app starts
+        if: matrix.platform == 'win'
+        run: node scripts/verify-win-build.js
+
       - uses: actions/upload-artifact@v4
         with:
           name: handrail-${{ matrix.platform }}

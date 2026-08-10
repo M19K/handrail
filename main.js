@@ -298,13 +298,32 @@ function main() {
       console.warn(`[main] could not register ${toggle} — another app has it`);
     }
 
-    // A dedicated panic key. If the overlay is ever stuck visible during a
-    // screen share, hunting for the right window is not an option.
-    const hide = process.platform === 'darwin' ? 'Command+Shift+Escape' : 'Control+Shift+Escape';
-    globalShortcut.register(hide, () => {
+    /**
+     * A dedicated panic key. If the overlay is ever stuck visible during a
+     * screen share, hunting for the right window is not an option.
+     *
+     * NOT Control+Shift+Escape on Windows. That is Task Manager, reserved by
+     * the OS: `globalShortcut.register` returns false and the key never fires.
+     * This code ignored the return value, so from 0.1.0 to 0.1.5 Windows had no
+     * panic key at all and nothing said so — and because the shipped Windows
+     * build also had no tray icon, the one moment the panic key exists for was
+     * the moment there was no way out but Task Manager.
+     *
+     * Control+Alt+H mirrors the toggle, which makes it guessable, and Windows
+     * does not reserve it.
+     */
+    const hide = process.platform === 'darwin' ? 'Command+Shift+Escape' : 'Control+Alt+H';
+    if (!globalShortcut.register(hide, () => {
       turns.reset();
       windows.hideOverlay();
-    });
+    })) {
+      // Loud, and in the log file: this is the key that gets Handrail off the
+      // screen in front of an audience. Silently absent is the worst outcome.
+      console.error(`[main] PANIC KEY UNAVAILABLE — ${hide} is taken by another app or the OS. `
+        + 'Handrail can still be hidden from the tray icon or the overlay\'s close button.');
+    } else {
+      console.log(`[main] shortcuts: ${toggle} toggles, ${hide} hides`);
+    }
   }
 
   // The overlay is a background utility. Closing its window is "put it away",
