@@ -46,6 +46,67 @@ const DEFAULT_SETTINGS = {
   model: 'google/gemini-3.5-flash',
 };
 
+/**
+ * Is keychain ownership something we have to prove before asking the OS?
+ *
+ * Only on macOS, and only there because of how the secret is scoped:
+ *
+ *   macOS   Keychain, ACL bound to the app's CODE SIGNATURE. Handrail ships
+ *           unsigned, so its ad-hoc signature changes every build — a key
+ *           written by one build genuinely does not belong to the next one.
+ *   Windows DPAPI, scoped to the USER. Survives updates, reinstalls and moves.
+ *   Linux   libsecret, scoped to the login keyring. Same.
+ *
+ * Doing this everywhere would make Windows users re-enter their key after every
+ * update to solve a problem Windows does not have. See getKey() for what the
+ * check prevents.
+ */
+const OWNERSHIP_IS_LOAD_BEARING = process.platform === 'darwin';
+
+/**
+ * A stable name for "the build that is running right now".
+ *
+ * Good enough for the job: it has to change whenever the code signature changes
+ * and stay put otherwise. A packaged release and a dev run are different
+ * identities, and so are two different released versions — which is exactly
+ * when an ad-hoc signature changes.
+ *
+ * It cannot read the real signature, and does not try. Shelling out to
+ * `codesign` during boot to answer a question about our own keychain would add
+ * a process spawn to the critical path to fix a problem this string already
+ * solves.
+ */
+function buildIdentity() {
+  const kind = app.isPackaged ? 'app' : 'dev';
+
+  /**
+   * A packaged build carries a unique id stamped in by
+   * `scripts/beforepack-build-id.js`.
+   *
+   * The version number alone is not specific enough. An ad-hoc signature is
+   * unique per BUILD, so two builds of the same version are different owners to
+   * the Keychain. Fingerprinting as `app-0.1.4` let a rebuilt 0.1.4 think it
+   * owned a key saved by an earlier 0.1.4, call into the Keychain, and trigger
+   * the password prompt this guard exists to avoid — observed live on
+   * 2026-08-09.
+   *
+   * Read once, at module load, off a file inside the asar. No process spawn and
+   * nothing on the boot path that can block.
+   */
+  if (app.isPackaged) {
+    try {
+      const stamped = fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'build-id.txt'), 'utf8').trim();
+      if (stamped) return `${kind}-${app.getVersion()}-${stamped}`;
+    } catch (_) {
+      // No stamp: an older build, or one packaged without the hook. Fall
+      // through to the version, which is coarser but still refuses a key from a
+      // different release.
+    }
+  }
+
+  return `${kind}-${app.getVersion()}`;
+}
+
 class Store {
   constructor() {
     this.dir = app.getPath('userData');
@@ -108,10 +169,18 @@ class Store {
 
     let record;
     if (safeStorage.isEncryptionAvailable()) {
-      record = { v: 1, enc: 'os', data: safeStorage.encryptString(value).toString('base64') };
+      record = {
+        v: 2,
+        enc: 'os',
+        data: safeStorage.encryptString(value).toString('base64'),
+        // Which build wrote this. See `buildIdentity()` and getKey() below —
+        // this is what stops a keychain the current build cannot open from
+        // being opened at all.
+        owner: buildIdentity(),
+      };
     } else {
       console.warn('[store] OS encryption unavailable — API key stored in plain text');
-      record = { v: 1, enc: 'none', data: Buffer.from(value, 'utf8').toString('base64') };
+      record = { v: 2, enc: 'none', data: Buffer.from(value, 'utf8').toString('base64') };
     }
 
     fs.writeFileSync(this.keyPath, JSON.stringify(record), 'utf8');
@@ -145,8 +214,44 @@ class Store {
       // Not JSON: written by the first version, which stored a bare buffer.
     }
 
+    /**
+     * Refuse to touch the keychain when a different build wrote this key.
+     *
+     * This guard is the fix for the worst bug macOS has produced. On macOS the
+     * `safeStorage` secret is a Keychain item whose ACL is bound to the app's
+     * CODE SIGNATURE. Handrail is distributed unsigned, so its ad-hoc signature
+     * differs from build to build — which means every update, and every move
+     * between a dev run and the packaged app, presents a keychain item the
+     * running binary is not the owner of.
+     *
+     * macOS answers that by putting up an authorisation prompt. Handrail sets
+     * `LSUIElement`, so at boot it has no window, no Dock icon and no menu bar,
+     * and the prompt can end up with nothing to attach to. `decryptString` is
+     * synchronous, so the main process blocks inside it — forever, before the
+     * overlay is created, before the tray is drawn, before the hotkey is
+     * registered. The observable result is an app that "does nothing": a live
+     * process, no window, no way in and no way out but Force Quit.
+     *
+     * Reproduced on 2026-08-09 against the shipped 0.1.3 arm64 build: with
+     * key.dat present the app was windowless and helperless; with it moved
+     * aside the same binary booted straight into onboarding.
+     *
+     * So the check happens on OUR data, before the OS is asked anything. A key
+     * we cannot prove we own is treated as gone, which sends the user to
+     * onboarding to paste it again — three seconds of annoyance instead of an
+     * app that never opens again.
+     */
+    if (record && record.enc === 'os' && OWNERSHIP_IS_LOAD_BEARING && record.owner !== buildIdentity()) {
+      console.warn(
+        `[store] stored key belongs to a different build (${record.owner || 'unrecorded'} != ` +
+        `${buildIdentity()}); not decrypting — the user will be asked for it again`,
+      );
+      this.keyProblem = 'foreign';
+      return null;
+    }
+
     try {
-      if (record && record.v === 1) {
+      if (record && (record.v === 1 || record.v === 2)) {
         const buf = Buffer.from(record.data, 'base64');
         this._key = record.enc === 'os' ? safeStorage.decryptString(buf) : buf.toString('utf8');
       } else {

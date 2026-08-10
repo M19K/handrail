@@ -40,7 +40,20 @@ class TurnController {
    *   of the screenshot; returns a restore function
    */
   constructor(deps) {
-    Object.assign(this, deps);
+    // Assigned one by one rather than with `Object.assign(this, deps)`.
+    // Object.assign copies whatever it is handed, so a caller passing a stray
+    // key silently grew a property on the controller, and every dependency was
+    // invisible to tooling — a typechecker cannot see through it, which is why
+    // 43 of this file's reported errors were "property does not exist" on
+    // properties that plainly do. Naming them is also the only list of what
+    // this class actually needs.
+    this.llm = deps.llm;
+    this.store = deps.store;
+    this.getOverlay = deps.getOverlay;
+    this.emit = deps.emit;
+    this.point = deps.point;
+    this.excludeFromCapture = deps.excludeFromCapture;
+
     this.turnId = 0;
     this.active = null;   // { id, cancelled }
     this.task = null;     // { taskId, steps, activeIndex, display }
@@ -678,6 +691,42 @@ function friendly(err) {
   const is = (...codes) => codes.some((c) => status === c || has(c));
 
   if (err && err.code === 'NO_KEY') return 'No API key set yet. Add one in Settings.';
+
+  /**
+   * Screen capture was refused by the OS.
+   *
+   * `desktopCapturer.getSources()` throws a bare "Failed to get sources." and
+   * that string used to go straight to the user, above a "Try again" button
+   * that could never work — macOS decides screen-recording access once per
+   * process at launch, so a permission granted while Handrail is running does
+   * nothing until it restarts. Someone who has just granted the permission and
+   * watched it fail anyway has no way to guess that.
+   *
+   * Observed on 2026-08-09: permission granted mid-session, "Try again"
+   * failed identically every time, and a restart fixed it instantly.
+   */
+  if (/Failed to get sources|No screen sources available|returned an empty image/i.test(msg)) {
+    /**
+     * The second instruction is the one people need and would never guess.
+     *
+     * macOS ties a screen-recording grant to the app's CODE SIGNATURE, and
+     * Handrail's ad-hoc signature changes with every build. After an update,
+     * System Settings still lists Handrail and the switch is still on — but the
+     * process asking is not the one that was granted, so it is refused anyway.
+     * Turning the switch off and on re-grants it against the new signature.
+     *
+     * Telling someone to enable a permission that is visibly already enabled is
+     * how you lose them. Observed live on 2026-08-09: the switch was on, and
+     * capture failed.
+     */
+    return process.platform === 'darwin'
+      ? 'Handrail cannot see your screen. Open Privacy & Security → Screen & System ' +
+        'Audio Recording. If Handrail is not listed, allow it. If it IS listed and ' +
+        'already switched on, switch it off and on again — macOS ties that permission ' +
+        'to the exact version of the app, so an update leaves it looking granted when ' +
+        'it is not. Then quit Handrail and open it again.'
+      : 'Handrail could not capture your screen. Try again in a moment.';
+  }
   if (/Invalid API key/i.test(msg) || is(401, 403)) return 'That API key was rejected. Check it in Settings.';
   if (/Rate limit/i.test(msg) || is(429)) return 'The provider is rate-limiting you. Wait a moment and try again.';
   if (/insufficient|credit|quota/i.test(msg)) return 'Your provider account is out of credit.';

@@ -559,7 +559,12 @@ async function run() {
     if (!overlay.isDestroyed() && !overlay.isVisible()) everHidden = true;
   }, 10);
 
-  await turns.ask({ text: 'what is on my screen?', capture: true, turnId: 'flicker-check' });
+  // threadId is passed explicitly, even as null. Omitting it is the documented
+  // trap in CONTEXT.md — a caller that leaves it out silently inherits whatever
+  // thread was last pinned, so a smoke check written without it is not
+  // exercising the shape the renderer actually sends. null is the honest value
+  // here: it means "no thread open", which is the fallback ask() is built for.
+  await turns.ask({ text: 'what is on my screen?', capture: true, threadId: null, turnId: 'flicker-check' });
   await new Promise((r) => setTimeout(r, 1600));
   clearInterval(watcher);
 

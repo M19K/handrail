@@ -30,7 +30,6 @@ const detected = $('detected');
 const keyContinue = $('key-continue');
 
 let step = 0;
-let validated = null;   // { valid, provider } for the key currently in the box
 
 function show(index) {
   step = Math.max(0, Math.min(panels.length - 1, index));
@@ -84,7 +83,6 @@ function setDetected(mode, text) {
 
 keyInput.addEventListener('input', () => {
   const value = keyInput.value.trim();
-  validated = null;
 
   if (!value) {
     keyField.removeAttribute('data-state');
@@ -128,7 +126,6 @@ async function advanceFromKey() {
 
   try {
     const result = await bridge.setup.validateKey(value);
-    validated = result;
 
     if (!result.valid) {
       keyField.setAttribute('data-state', 'invalid');
@@ -164,17 +161,73 @@ for (const button of document.querySelectorAll('[data-back]')) {
 
 $('get-key').addEventListener('click', () => bridge.setup.openExternal('get-key'));
 
+/**
+ * Whether the user has already been shown that screen access is missing.
+ *
+ * The second press of the button has to let them through. Without this the
+ * button re-checks a permission that cannot have changed — macOS binds it at
+ * launch — reprints the same warning and never finishes, which is a dead end
+ * rather than a warning.
+ */
+let screenAccessWarned = false;
+
 $('finish').addEventListener('click', async () => {
   // Trigger the OS permission prompt here rather than mid-task. Being asked
   // for screen access while you are halfway through a question is jarring, and
   // on macOS it can require restarting the app.
-  const status = await bridge.setup.requestScreenAccess();
-  if (!status.granted) {
-    $('screen-status-text').textContent =
-      'Your operating system has not granted screen access yet. Handrail will still ' +
-      'answer questions, but it cannot see your screen until you allow it in System Settings.';
+  if (screenAccessWarned) {
+    await bridge.setup.complete();
+    return;
   }
+
+  const status = await bridge.setup.requestScreenAccess();
+
+  if (status.granted) {
+    await bridge.setup.complete();
+    return;
+  }
+
+  screenAccessWarned = true;
+
+  /**
+   * Stop here rather than finishing setup into a broken state.
+   *
+   * This used to write a sentence into the panel and then complete anyway, so
+   * the user landed on the overlay believing they were set up. Their first
+   * question came back "Failed to get sources" with a Try again button that
+   * could not ever succeed.
+   *
+   * `needsRestart` is the case worth separating: macOS binds screen-recording
+   * access when the process launches, so a permission granted just now — in
+   * the prompt, or by hand in System Settings — does nothing at all until
+   * Handrail restarts. Nothing in the product said so, and it is not something
+   * anyone would guess.
+   */
+  $('screen-status-text').textContent = status.needsRestart
+    ? 'macOS says screen access is allowed, but Handrail cannot actually use it yet. ' +
+      'Restart Handrail below. If it still cannot see your screen, switch Handrail off ' +
+      'and on again in Screen & System Audio Recording — macOS ties that permission to ' +
+      'the exact version of the app, so an update can leave it looking granted when it ' +
+      'is not.'
+    : 'Handrail does not have screen access yet. Allow it under Privacy & Security → ' +
+      'Screen & System Audio Recording, then restart Handrail.';
+
+  $('screen-actions').hidden = false;
+  $('restart-handrail').hidden = !status.needsRestart;
+  // Setup is finished apart from this, so let them through if they insist —
+  // the answer path still works without a screenshot, it just cannot see.
+  $('finish').textContent = 'Continue without screen access';
+});
+
+$('open-screen-settings').addEventListener('click', () => {
+  bridge.setup.openScreenSettings();
+  // Granting it over there needs a restart over here, and they are about to.
+  $('restart-handrail').hidden = false;
+});
+
+$('restart-handrail').addEventListener('click', async () => {
   await bridge.setup.complete();
+  bridge.setup.relaunch();
 });
 
 $('quit').addEventListener('click', () => bridge.window.quit());
@@ -184,12 +237,37 @@ show(0);
 /**
  * Explain a discarded key rather than looking like a fresh install.
  *
- * When a stored key cannot be decrypted the store deletes it and records why.
- * Without this the user lands on "Connect an AI provider" with no idea their
- * key ever existed, let alone why it went.
+ * When a stored key cannot be used, the store records why. Without this the
+ * user lands on "Connect an AI provider" with no idea their key ever existed,
+ * let alone why it went.
+ *
+ * Two reasons, deliberately worded differently, because they are not the same
+ * event to the person reading them:
+ *
+ *   foreign     expected, and their key is fine. A different build of Handrail
+ *               saved it — an update, or a reinstall. Nothing is wrong and
+ *               nothing was lost; it just has to be pasted again. See
+ *               `store.js` for why the app refuses to open it.
+ *   unreadable  something actually failed. The OS could not decrypt it and it
+ *               is not coming back.
+ *
+ * Neither mentions an operating system by name. The previous copy named Windows
+ * and was shown to everyone, on every platform, on every first run.
  */
+const KEY_PROBLEM_COPY = {
+  foreign:
+    'Handrail was updated or reinstalled, so it needs your key once more. ' +
+    'Nothing is wrong with the key itself — paste it again and it will be saved fresh.',
+  unreadable:
+    'Your saved key could not be read on this computer, and that cannot be undone. ' +
+    'Paste it again and it will be saved fresh.',
+};
+
 bridge.settings.get()
   .then((settings) => {
-    if (settings && settings.keyProblem === 'unreadable') $('key-lost').hidden = false;
+    const copy = settings && KEY_PROBLEM_COPY[settings.keyProblem];
+    if (!copy) return;
+    $('key-lost-text').textContent = copy;
+    $('key-lost').hidden = false;
   })
   .catch(() => { /* onboarding works without the explanation */ });

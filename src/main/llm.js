@@ -97,11 +97,71 @@ function answerFrom(parsed, raw) {
   return String(raw || '').trim();
 }
 
+/**
+ * What the arrow should point at, wherever the model put it.
+ *
+ * The schema has two homes for `target`: top level on an answer, and per-step
+ * inside a checklist. A ONE-STEP plan is turned into prose by `answerFrom` and
+ * returned as an answer — and the answer branch only ever read the top-level
+ * field, which a task-shaped reply does not have. So a model that correctly
+ * said "click the Razor tool", as a single step, produced prose telling the
+ * user to click something and no arrow at all.
+ *
+ * Silent, and invisible from either end. The reply looked right, `turn.js`
+ * never entered `_pointAtTarget` because `result.target` was empty, and nothing
+ * was logged because nothing had failed. The arrow is the one thing this
+ * product does that nothing else does, so the path that quietly skips it is
+ * worth more care than the path that errors.
+ */
+function targetFrom(parsed) {
+  const top = parsed.target ? String(parsed.target).trim() : '';
+  if (top) return top;
+
+  // The first step that names something — a plan whose opening step is
+  // "wait for the installer to finish" legitimately has no target, and the
+  // arrow belongs on the first step that does.
+  if (Array.isArray(parsed.steps)) {
+    for (const step of parsed.steps) {
+      const t = step && step.target ? String(step.target).trim() : '';
+      if (t) return t;
+    }
+  }
+
+  return '';
+}
+
+/**
+ * The shape `Llm` needs from a provider client.
+ *
+ * Written down because `makeClient` used to be documented as returning
+ * `object`, which told a reader nothing and told a typechecker less — every
+ * `client.models.…` call read as an error against a type that allowed no
+ * properties at all. This is also the contract a test double has to meet, and
+ * `respond()` is only testable because a double can be passed in.
+ *
+ * @typedef {{ text?: string }} ModelResponse the only field we read off a reply
+ *
+ * @typedef {object} ProviderClient
+ * @property {object} models
+ * @property {(req: object) => Promise<ModelResponse>} models.generateContent
+ * @property {(req: object) => Promise<AsyncIterable<ModelResponse>>} models.generateContentStream
+ */
+
+/**
+ * What a single model request can be tuned with.
+ *
+ * @typedef {object} RequestOptions
+ * @property {number} [temperature]
+ * @property {number} [maxOutputTokens]
+ * @property {AbortSignal} [signal] threaded all the way to fetch, so Escape
+ *   actually cancels the upstream call instead of only discarding its reply
+ */
+
 class Llm {
   /**
    * @param {() => string|null} getKey
    * @param {() => string} getModel
-   * @param {(opts: {apiKey: string}) => object} [makeClient] how to build the
+   * @param {(opts: {apiKey: string}) => ProviderClient} [makeClient] how to build the
    *   provider client. Defaults to the real OpenRouter one; the only reason it
    *   is injectable is that `respond()` was the single load-bearing function in
    *   the product with no test at all — the client was constructed inside
@@ -117,7 +177,9 @@ class Llm {
   _client() {
     const key = this.getKey();
     if (!key) {
-      const err = new Error('No API key set. Add one in Settings.');
+      const err = /** @type {Error & { code?: string }} */ (
+        new Error('No API key set. Add one in Settings.')
+      );
       err.code = 'NO_KEY';
       throw err;
     }
@@ -128,6 +190,10 @@ class Llm {
    * `signal` is threaded all the way to fetch. Without it, cancelling a slow
    * vision call left the request running and billed — only the reply was
    * discarded — so Escape looked like a cancel and was not one.
+   *
+   * @param {string} system
+   * @param {object[]} parts
+   * @param {RequestOptions} [opts]
    */
   _req(system, parts, { temperature = 0.2, maxOutputTokens = 1400, signal } = {}) {
     return {
@@ -213,7 +279,7 @@ class Llm {
       // model returned. It becomes an ordinary answer instead.
       markdown: answerFrom(parsed, res.text),
       // An ordinary answer can point at something too — see turn.js.
-      target: parsed.target ? String(parsed.target).trim() : '',
+      target: targetFrom(parsed),
       completedStep: Number.isInteger(step) && step > 0 ? step - 1 : null,
     };
   }

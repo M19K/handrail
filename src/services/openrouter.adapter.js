@@ -273,81 +273,13 @@ class OpenRouterClient {
 }
 
 /**
- * Speech-to-text via OpenRouter's OpenAI-compatible transcription endpoint.
+ * `OpenRouterClient` is the whole public surface.
  *
- * Takes a complete WAV buffer (speech.service.js already encodes one via
- * _createWavBuffer) and returns the transcript text.
- *
- * Endpoint limits: 60s upstream timeout, 25 MB max upload, no SRT/VTT.
- * The caller's VAD segments at ~4s, so both are comfortably clear.
+ * The rest — `geminiToOpenAI`, `toGeminiResponse`, `toGeminiChunk`, `mapModel`,
+ * `OPENROUTER_BASE` — are used inside this file and were exported to nobody;
+ * `transcribeAudio` went with them, along with the speech-to-text it served.
+ * v1 cut speech entirely (see CONTEXT.md § v1 scope), so it had been dead since
+ * that decision, still carrying an upstream `HTTP-Referer` and an `X-Title` of
+ * "OpenCluely" on every request it would have made.
  */
-async function transcribeAudio(apiKey, wavBuffer, options = {}) {
-  const {
-    model = 'openai/whisper-1',
-    language,
-    prompt,
-    timeoutMs = 60000,
-  } = options;
-
-  if (!apiKey) throw new Error('OpenRouter API key is required');
-  if (!wavBuffer || !wavBuffer.length) return '';
-
-  const MAX_BYTES = 25 * 1024 * 1024;
-  if (wavBuffer.length > MAX_BYTES) {
-    throw new Error(
-      `Audio segment is ${(wavBuffer.length / 1024 / 1024).toFixed(1)} MB, over OpenRouter's 25 MB limit`
-    );
-  }
-
-  const form = new FormData();
-  // Copy into a fresh Uint8Array — a Node Buffer is a view onto a shared pool,
-  // so passing it directly to Blob can capture unrelated bytes.
-  form.append(
-    'file',
-    new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }),
-    'segment.wav'
-  );
-  form.append('model', model);
-  if (language && language !== 'auto') form.append('language', language);
-  if (prompt) form.append('prompt', prompt);
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(`${OPENROUTER_BASE}/audio/transcriptions`, {
-      method: 'POST',
-      // Content-Type is deliberately omitted so fetch sets the multipart
-      // boundary itself; setting it manually breaks the upload.
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://github.com/TechyCSR/OpenCluely',
-        'X-Title': 'OpenCluely',
-      },
-      body: form,
-      signal: controller.signal,
-    });
-
-    if (!res.ok) await raiseHttpError(res);
-
-    const json = await res.json();
-    return (json && typeof json.text === 'string') ? json.text : '';
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error(`Transcription timed out after ${timeoutMs}ms`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-module.exports = {
-  OpenRouterClient,
-  transcribeAudio,
-  geminiToOpenAI,
-  toGeminiResponse,
-  toGeminiChunk,
-  mapModel,
-  OPENROUTER_BASE,
-};
+module.exports = { OpenRouterClient };

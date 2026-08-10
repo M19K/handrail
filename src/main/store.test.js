@@ -19,8 +19,11 @@ const os = require('node:os');
 const path = require('node:path');
 
 // A throwaway userData directory per construction, so a corrupt-store test
-// cannot touch the real installed app.
+// cannot touch the real installed app. Removed on exit: `doctor-mac.js` counts
+// stray `handrail-*` temp directories as a signal that a second instance may be
+// running against a store of its own, and suite debris drowns that out.
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'handrail-store-test-'));
+process.on('exit', () => fs.rmSync(DATA, { recursive: true, force: true }));
 
 // `store.js` imports electron for the Store class. Stub it so both the pure
 // helper and the disk-recovery paths can run without booting an app.
@@ -29,7 +32,7 @@ const originalLoad = Module._load;
 Module._load = function stubElectron(request, ...rest) {
   if (request === 'electron') {
     return {
-      app: { getPath: () => DATA, isPackaged: true },
+      app: { getPath: () => DATA, isPackaged: true, getVersion: () => '0.0.0-test' },
       safeStorage: { isEncryptionAvailable: () => false },
     };
   }

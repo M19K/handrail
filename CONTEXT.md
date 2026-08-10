@@ -4,11 +4,97 @@
 > or agent picking up this project should be able to continue from here without
 > re-deriving anything. Update it when a decision is made, not at the end.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-10
 
 ---
 
-## ⏭ SESSION HANDOFF — read this first (2026-08-09)
+## ⏭ WHERE THIS STANDS RIGHT NOW (2026-08-10)
+
+Branch **`fix/macos-parity`**, pushed, **PR [#4](https://github.com/M19K/handrail/pull/4) open**. Working tree clean. VERSION is
+`0.1.4`; the latest *published* release is still `v0.1.3`.
+
+**Verified green on this Mac (M4 mini, macOS 26.5.2, 1920x1080 @ 1x):**
+
+- 117 unit tests · 63 smoke checks · 29 Playwright `_electron` tests
+- `npm run verify:mac` — the packaged app installs, launches, draws a window
+- `npm run doctor` — catches duplicate bundles, stale TCC records, temp-dir litter
+- eslint clean; typecheck down from 63 errors to 12, of which 3 are in `src/`
+  and the rest are Electron typings gaps in build scripts
+- The arrow was confirmed landing on a real control on real hardware
+
+**What is NOT done, in order:**
+
+1. **Merge PR #4** and publish **v0.1.4** with both `.dmg` files. Nothing else
+   blocks it.
+2. The last 12 type errors — script-level, cosmetic, not shipping defects.
+3. **Never verified on this hardware:** Retina (2x) arrow geometry, multi-monitor
+   with mixed scale factors, and the Intel x64 build. This machine is a single
+   1x display, so those three remain theoretical exactly as they were before.
+4. Signing + notarisation ($99/yr) is still the only thing that removes the
+   Gatekeeper dance and the re-grant-after-every-update problem. See `PLATFORM.md`.
+
+**The one trap to carry forward:** every rebuild changes the ad-hoc signature,
+and macOS binds both the Screen Recording grant and the keychain item to that
+signature. Reinstalling silently voids both, and the Settings toggle keeps
+showing "on" while it is not in effect. `npm run doctor` reports this; the fix is
+`tccutil reset ScreenCapture com.handrail.app`, then let the app re-prompt.
+
+---
+
+## ⏭ SESSION HANDOFF (2026-08-09, macOS pass)
+
+### macOS was run for the first time, and is now fixed
+
+Every release since 0.1.0 built a `.dmg` in CI that nobody had ever opened. One
+was opened on 2026-08-09 on a Mac mini M4, macOS 26.5.2. **It could not be
+installed, and once forced past Gatekeeper it drew no window.**
+
+Running from source was already fine — all three suites passed on macOS
+unmodified, and the overlay, both hotkeys, content protection and key
+persistence all worked first try. The whole failure was in the packaged artifact,
+which nothing in the repo had ever executed.
+
+Fixed in **0.1.4**. Full detail in `CHANGELOG.md`; the parity matrix in
+`PLATFORM.md` is now written from observation instead of from reading the code.
+The short version:
+
+- The `.dmg` was **malformed, not merely unsigned** — Gatekeeper said "damaged
+  and can't be opened" with Move to Trash as the only button. Now ad-hoc signed,
+  and the build fails if the signature does not verify.
+- The app **launched and did nothing**: ASAR-integrity skew between
+  electron-builder 26 and Electron 29 (fixed by moving to Electron 43), and
+  `safeStorage` blocking forever on a keychain item written by a different build.
+- The packaged app **had no menu bar icon** (`build.files` shipped no artwork)
+  and `LSUIElement` removes the Dock icon, so it had no presence anywhere.
+- The tray icon was a **solid blob** — a 98%-opaque app icon used as a template.
+- The "your key could not be read" banner showed on **every** first run, on every
+  platform, blaming Windows.
+
+### The trap that made all of this expensive
+
+**Three green suites and an unusable artifact co-existed for four releases.**
+`npm test`, `scripts/smoke.js` and `npm run qa` all execute the **repo**. A file
+missing from `build.files`, a wrong `Info.plist`, a bad signature and an ASAR
+hash mismatch are every one of them invisible to all three.
+
+`npm run verify:mac` is the answer and it is wired into `npm run build:mac`. It
+launches the built bundle and fails if it cannot get far enough to write one line
+of its own log. **Run it on the artifact before publishing anything.**
+
+Handrail now writes `<userData>/handrail.log`. `console.log` in a packaged mac
+app reaches nobody, which is why a boot failure produced no window, no crash
+report and no output at all.
+
+### Still untested on macOS — real gaps, not oversights
+
+- **Retina.** The test machine is 1920×1080 at `scaleFactor: 1`. The 2x arrow
+  geometry in `src/main/geometry.js` and `src/main/capture.js` is still theory.
+- **Multi-monitor**, especially mixed scale factors.
+- **A live arrow on a real control.** The renderer is covered by smoke
+  (`7-arrow.png`); no real question returned a `target`.
+- **Intel/x64** — built, never run. The same state that produced everything above.
+
+---
 
 ### Where it is
 
@@ -51,12 +137,24 @@ GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
   directly, including a hand-written `.ico` encoder.
 - **Speech deleted.** No Whisper, no Azure, no `node-record-lpcm16`.
 
-### Verification — three layers, all green
+### Verification — four layers, all green
 
-- `npm test` — **99 unit tests** (geometry, turn state machine, `respond()`,
+- `npm test` — **117 unit tests** (geometry, turn state machine, `respond()`,
   capture source selection, store recovery, response shapes, key-format
-  detection). Node's built-in runner, no framework, no Electron. **This is what
-  gates CI, so it must never need a display or a binary.**
+  detection, packaging, per-build key ownership). Node's built-in runner, no
+  framework, no Electron. **This is what gates CI, so it must never need a
+  display or a binary.**
+- `npm run doctor` — **the macOS environment check** (`scripts/doctor-mac.js`).
+  Read-only, and the only layer that looks OUTSIDE the repo. It exists because
+  an evening was lost to a failure the other three could not see: three copies
+  of `Handrail.app` on one Mac — the installed one plus both `dist/` build
+  outputs — each ad-hoc signed differently and all three claiming
+  `com.handrail.app`. macOS keys a Screen Recording grant to the signature, so
+  the permission the user granted kept applying to a bundle that was not the one
+  asking, while the switch in System Settings stayed on the whole time. It also
+  catches two instances running against different stores, which is what puts the
+  overlay and onboarding on screen at once contradicting each other. Wired into
+  `verify:mac`, so `build:mac` now fails on a dirty machine.
 - `npx electron scripts/smoke.js` — **63 checks** against the real main process
   and real preload, writing screenshots to `%TEMP%\handrail-smoke`.
 - `npm run qa` — **29 Playwright `_electron` tests** that launch the real app

@@ -7,6 +7,206 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.4] — 2026-08-10
+
+**macOS ran for the first time.** Every release since 0.1.0 built a `.dmg` in CI
+that nobody had ever opened. On 2026-08-09 one was opened on a Mac mini M4
+running macOS 26.5.2, and it did not work — not "had rough edges", could not be
+installed and did not draw a window. This release is that build being made real.
+
+Running from source was already fine, and all three suites passed on macOS
+unmodified. Everything below is the gap between "the source runs" and "the thing
+a person downloads works".
+
+### Fixed
+
+- **The `.dmg` could not be installed at all.** Gatekeeper rejected it with
+  *"Handrail is damaged and can't be opened"*, offering only **Move to Trash**.
+  Right-click → Open showed the same dialog, and no "Open Anyway" row appeared
+  in Privacy & Security — that row is only offered for the unverified-developer
+  verdict. The only way past it was `xattr -cr` in Terminal.
+
+  The bundle was not unsigned, it was **malformed**: `codesign` reported
+  `Signature=adhoc`, `linker-signed`, `Sealed Resources=none`,
+  `Identifier=Electron`. electron-builder had never signed it; what shipped was
+  the linker's stub, which seals none of the bundle's resources.
+
+  `scripts/afterpack-mac.js` now signs the bundle ad-hoc, inside-out, and
+  **fails the build** if the result does not verify. The verdict becomes "Apple
+  could not verify…", which clears in two documented clicks. Costs nothing and
+  needs no Apple account. Developer ID + notarisation is still the only way to
+  get a clean double-click.
+
+- **The app launched and then did nothing.** A live process, no window, no menu
+  bar icon, no hotkey, no log, no crash report. Force Quit was the only way out.
+
+  Two independent causes, either of which alone was fatal:
+
+  1. **ASAR integrity.** electron-builder 26 writes an `ElectronAsarIntegrity`
+     header hash into `Info.plist`; Electron 29 validated it differently and
+     rejected a **correct** hash — recomputing SHA-256 over the asar header
+     matched `Info.plist` exactly, and the app still refused to boot, exiting
+     inside dyld before a line of JavaScript ran. Fixed by moving to a current
+     Electron rather than by switching the check off.
+
+  2. **The keychain.** `safeStorage.decryptString()` blocked the main process
+     forever. On macOS the secret's ACL is bound to the app's **code
+     signature**, and an ad-hoc signature changes every build — so every update
+     presents a key the running binary does not own. macOS answers with an
+     authorisation prompt, and `LSUIElement` means there is no window at boot
+     for it to attach to. `decryptString` is synchronous, so main stopped there,
+     before the overlay, the tray and the hotkey existed.
+
+     Reproduced against the shipped build: with `key.dat` present the app was
+     windowless; with it moved aside the same binary booted straight into
+     onboarding.
+
+- **The packaged app had no menu bar icon.** `build.files` shipped neither
+  `assets/` nor `build/`, so none of the three paths `main.js` looks for existed
+  inside the `.app` and it fell through to "no tray icon on disk". With
+  `LSUIElement` also removing the Dock icon, the shipped app had **no visible
+  presence anywhere in the system** — nothing to click, and nothing to quit.
+  Windows was unaffected because `scripts/package-win.js` copies the artwork
+  explicitly, which is why it survived four releases.
+
+- **The menu bar icon was a solid blob.** `setTemplateImage(true)` was called on
+  the full app icon — a dark rounded square that is 98% opaque. macOS keeps only
+  the alpha channel of a template image, so the "silhouette" was a filled
+  rectangle and the mark was invisible. `scripts/make-tray-icons.js` now draws
+  the mark as alpha only at 16px and `@2x`.
+
+- **"Your saved key could not be read" showed on every first run, on every
+  platform.** `.notice { display: flex }` outranks the `hidden` attribute, which
+  is styled by the UA sheet — so the warning was never actually hidden. First-time
+  Mac users were told their key had been lost by *"Windows regenerating its
+  encryption store"*. `overlay.css` had carried the `[hidden]` guard since it was
+  written; `onboarding.html` was the one file that did not.
+
+- **Onboarding reported screen access as granted when it was not.** The check was
+  `sources.length > 0`, and on macOS `desktopCapturer.getSources()` returns a
+  source whether or not permission exists. So setup always completed, and the
+  failure surfaced later as a raw `Failed to get sources.` in the middle of the
+  user's first real question, above a **Try again** button that could never
+  succeed — macOS binds screen-recording access when the process launches, so a
+  permission granted mid-session does nothing until the app restarts.
+
+  `systemPreferences.getMediaAccessStatus('screen')` is the authority now.
+  Onboarding says what is wrong, opens the exact Privacy & Security pane, and
+  offers a **Restart Handrail** button.
+
+- **The app icon rendered as coloured static in System Settings.** Handrail's row
+  in Privacy & Security showed a block of noise beside its name, while the Dock
+  and Finder looked correct. electron-builder's generated `.icns` puts the small
+  sizes in the `icp4`/`icp5`/`icp6` chunk types, which may hold either PNG or raw
+  pixels and carry no discriminator — macOS 26 reads them as raw. Extracting the
+  chunk produced a perfectly good 16px PNG: the artwork was never wrong, the
+  container was. `scripts/make-icons.js` now builds `build/icon.icns` with
+  Apple's `iconutil`, which emits the types every macOS agrees on, and a test
+  fails if the ambiguous ones come back.
+
+- **The keychain guard was one build too coarse.** Fingerprinting a build as
+  `app-<version>` correctly separated a dev run from a packaged one and one
+  release from the next, but not two builds of the *same* version — and an
+  ad-hoc signature is unique per build, not per version. A rebuilt 0.1.4 reading
+  a key saved by an earlier 0.1.4 believed it was the owner, called into the
+  Keychain and produced the password prompt the guard exists to prevent.
+  `scripts/beforepack-build-id.js` now stamps a unique id into every packaged
+  build. Caught live during verification, not by a test.
+
+- **The build claimed microphone and camera access it never uses.** Electron's
+  placeholder strings ("This app needs access to the microphone") shipped in the
+  packaged `Info.plist` for features v1 cut. Deleted at build time.
+
+### Added
+
+- **A log file.** `<userData>/handrail.log`, truncated per run, with the previous
+  run kept beside it. `console.log` in a packaged mac app goes nowhere a user can
+  reach, which is why the failures above took a day to find instead of a minute.
+
+- **`npm run verify:mac`** — launches the **built bundle** and fails if it cannot
+  get far enough to write one line of its own log. It is the only check in the
+  repo that runs the packaged app; `npm test`, smoke and the Playwright suite all
+  run against the repo, where every one of these defects is invisible. Wired into
+  `npm run build:mac`.
+
+- Tests for the two failures a green suite could not see: keychain ownership
+  (`src/main/store.keyowner.test.js`) and packaging invariants
+  (`src/main/packaging.test.js`) — the tray artwork exists, is mostly
+  transparent, and is listed in `build.files`.
+
+- **`npm run doctor`** (`scripts/doctor-mac.js`) — the macOS environment check,
+  and the only layer that looks outside the repo. It exists because an evening
+  went to a failure the other four could not see. Three copies of `Handrail.app`
+  were on one Mac at once — the installed one plus both `dist/` build outputs,
+  the latter registered simply by `verify:mac` launching them — each ad-hoc
+  signed differently while all three claimed `com.handrail.app`. macOS keys a
+  Screen Recording grant to the **code signature**, so the permission the user
+  granted kept applying to a bundle that was not the one asking:
+  `desktopCapturer` threw *"Failed to get sources"* with the switch in System
+  Settings visibly on, and `tccutil` showed three records for the one bundle id.
+
+  Underneath that, two instances ran at once. `verify:mac` launches with its own
+  `--user-data-dir`, which does **not** trip the single-instance lock, so a
+  leftover verification instance ran beside the real app on a different store —
+  one showing the overlay with the user's key, the other showing onboarding
+  claiming no key was set. Same app, two windows, contradicting each other.
+
+  Read-only by design: the remedies touch installed apps and system privacy
+  records. Wired into `verify:mac`, so `build:mac` fails on a dirty machine.
+
+### Changed
+
+- **Electron 29.4.6 → 43.3.0.** Required, not hygiene: 29 is EOL, is what
+  rejected its own valid ASAR hash, and this app renders model output. All 114
+  unit, 63 smoke and 29 Playwright tests pass on it unchanged.
+- `hardenedRuntime` is now explicitly `false` and pinned by a test. It turns on
+  library validation, which needs one Team ID across every loaded binary; an
+  ad-hoc signature has none, so switching it on without a certificate produces an
+  app that cannot load its own frameworks. It goes back to `true` **with**
+  notarisation, not before.
+- `npm start` hides the Dock icon on macOS, matching what `LSUIElement` does to
+  the packaged build, so development and production are the same product.
+- The tray and the global hotkeys are now registered **before** anything reads
+  the key. Whatever else fails, the app stays reachable and quittable.
+
+- **The arrow was dropped on two paths, silently.** A one-step plan is turned
+  into prose and returned as an answer, but the answer branch only read the
+  top-level `target` — which a task-shaped reply does not carry, because its
+  target sits inside the step. A model that correctly said "click the Razor
+  tool" produced prose telling the user to click it and drew nothing.
+  `targetFrom()` now falls back to the first step naming a control, skipping
+  steps like "wait for the installer to finish" that legitimately have none.
+
+  Separately, the answer prompt told the model to omit `target` when it could
+  not see the control, so an unsure model never reached `locate()` — the second
+  pass that exists only to find controls, is better at small ones, and already
+  reports `found:false` safely. Asking about something in the Dock is exactly
+  that case. The prompt now requires a target whenever the question is itself
+  about locating something.
+
+- **The suites leaked a temp directory per test** — 21 from key-ownership, 29
+  from Playwright, 3 from the store tests, never removed. Not cosmetic: the
+  doctor counts stray `handrail-*` directories precisely because a leftover one
+  can be the store a second instance is running against, and suite debris buried
+  that signal. 53 leaked directories became 0.
+
+### Known gaps
+
+Still untested on macOS, honestly: **Retina** (the test machine is 1920×1080 at
+`scaleFactor: 1`, so the 2x arrow geometry remains unverified), **multi-monitor**,
+and **Intel/x64** (built, never run).
+
+**The arrow itself is now verified on macOS**, but by injection rather than by a
+live model call: a known box was pushed through `parseBox` → `boxToScreenRect` →
+`arrowLayout` → the real arrow window, and the computed centre landed on the
+target exactly while the tip sat 14px off the control edge, matching
+`ARROW.tipGap`. That proves the coordinate pipeline and the window placement. It
+does not prove Retina, and it does not prove the model can resolve a ~40px Dock
+icon on a 1x display — which it could not, and which is a model-capability limit,
+not a bug that got fixed here.
+
+---
+
 ## [0.1.3] — 2026-08-09
 
 The oldest open product complaint, closed: Handrail inventing menu paths for

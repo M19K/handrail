@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "main.js",
+    "preload.js",
+    "preload-arrow.js",
+    "renderer/overlay.js",
+    "renderer/onboarding.js",
+    "renderer/arrow.js",
+    "renderer/dev.js",
+    "renderer/mock-bridge.js",
+    "scripts/*.js",
+    "spike/arrow/*.js",
+    "src/**/*.test.js",
+    "tests/qa/*.js"
+  ],
+  "project": ["**/*.js"],
+  "ignore": ["dist/**", "build/**", ".gstack/**"],
+  "ignoreDependencies": ["electron-builder"],
+  "ignoreBinaries": ["electron"]
+}

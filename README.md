@@ -50,9 +50,18 @@ Grab an installer from [Releases](../../releases).
 **Windows** — run the `.exe`. It is unsigned, so SmartScreen warns on first
 run: **More info** → **Run anyway**.
 
-**macOS** — open the `.dmg`. It is unsigned, so Gatekeeper refuses it first
-time: right-click the app → **Open** → **Open Anyway**. On macOS 15+, System
-Settings → Privacy & Security → **Open Anyway**.
+**macOS** — open the `.dmg` and drag Handrail to Applications. It is not
+notarised, so the first launch is refused with *"Apple could not verify
+"Handrail" is free of malware"*. Getting past it takes two steps:
+
+1. Double-click Handrail, then click **Done** on the warning.
+2. **System Settings → Privacy & Security**, scroll to Security, and click
+   **Open Anyway** next to *"Handrail" was blocked*. Confirm with **Open Anyway**.
+
+After that it opens normally, forever. You only do this once.
+
+Handrail has **no Dock icon** — it lives in the menu bar. Look for the rail mark
+at the top right of your screen, or press **⌘⇧H**.
 
 You will need an API key from [OpenRouter](https://openrouter.ai/keys), OpenAI
 or Anthropic. Onboarding asks for one and works out which is which from the key
@@ -79,14 +88,24 @@ Developer Mode. Releases are built in CI, where that is not a problem.
 
 ### A word about macOS
 
-Handrail is **not code-signed** yet. macOS will refuse to open it on the first
-try. The workaround is right-click → Open → "Open Anyway", or on macOS 15+,
-System Settings → Privacy & Security → "Open Anyway".
+Handrail is signed **ad-hoc**, not with an Apple Developer ID, and it is not
+notarised. macOS refuses the first launch; the two steps above clear it for good.
 
-That is a real problem for a product aimed at non-technical people, and it is
-worth saying plainly rather than burying: **until Handrail is signed, its
-realistic macOS audience is people comfortable doing that.** Signing is one
-electron-builder config block plus a certificate — see [PLATFORM.md](PLATFORM.md).
+The distinction matters more than it sounds. Through v0.1.3 the build was not
+signed at all — what shipped was the linker's stub, with none of the bundle's
+resources sealed. Gatekeeper does not call that "unverified", it calls it
+**"damaged and can't be opened"**, and offers only *Move to Trash*. There is no
+Open, right-click → Open shows the same dialog, and no "Open Anyway" row ever
+appears in Privacy & Security, because that row is only offered for the
+unverified-developer verdict. The only way in was a Terminal command. On a
+product aimed at people who cannot diagnose a failing install, that made the
+macOS build unusable rather than inconvenient.
+
+A valid ad-hoc signature costs nothing and no Apple account, and it is what
+moves the app from *impossible* to *two documented clicks*. It is not the
+destination: **Developer ID + notarisation is the only way to get a clean
+double-click**, and until that exists the realistic macOS audience is people
+willing to do those two clicks once. See [PLATFORM.md](PLATFORM.md).
 
 ## How it works
 
