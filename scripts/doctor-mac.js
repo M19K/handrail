@@ -67,6 +67,23 @@ function processLines() {
   return run('ps', ['-Ao', 'pid=,command=']).split('\n').filter(Boolean);
 }
 
+const LSREGISTER = '/System/Library/Frameworks/CoreServices.framework/Versions/A'
+  + '/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister';
+
+/**
+ * Is this bundle known to LaunchServices?
+ *
+ * Presence on disk is harmless; registration is what matters, because a
+ * registered bundle is one macOS will hand a TCC identity to. `lsregister -dump`
+ * is large, so this greps it once per call rather than parsing it.
+ */
+function isRegistered(bundlePath) {
+  if (!fs.existsSync(LSREGISTER)) return false;
+  const dump = run(LSREGISTER, ['-dump']);
+  if (!dump) return false;
+  return dump.includes(bundlePath);
+}
+
 // --- 1. how many Handrail.app bundles exist -------------------------------
 //
 // The one that bit us. `dist/mac` and `dist/mac-arm64` are ordinary build
@@ -93,14 +110,43 @@ function checkBundles() {
     return { path: p, cdhash: cd ? cd[1].slice(0, 12) : 'no signature' };
   });
 
-  if (candidates.length > 1) {
-    note('error', `${candidates.length} copies of Handrail.app on this Mac`,
-      signed.map((s) => `${s.path}  (${s.cdhash})`).join('\n'),
-      'Delete the dist/ copies: rm -rf dist/mac dist/mac-arm64\n'
-      + '    Each has its own ad-hoc signature but the same bundle id, so a Screen\n'
-      + '    Recording grant given to one silently does not apply to another.');
+  // A bundle sitting in dist/ is ordinary build output. It only becomes the
+  // problem once it is REGISTERED — launching one is what puts a second
+  // signature under the same bundle id into LaunchServices and TCC. So the
+  // severity depends on registration, not on presence: otherwise this fails
+  // every single build, since electron-builder always writes dist/mac*.
+  const installed = signed.filter((s) => !s.path.includes('/dist/'));
+  const built = signed.filter((s) => s.path.includes('/dist/'));
+  const registeredBuilt = built.filter((s) => isRegistered(s.path));
+
+  if (installed.length > 1) {
+    note('error', `${installed.length} installed copies of Handrail.app`,
+      installed.map((s) => `${s.path}  (${s.cdhash})`).join('\n'),
+      'Keep one and delete the rest. Each carries its own ad-hoc signature but\n'
+      + '    the same bundle id, so a Screen Recording grant given to one silently\n'
+      + '    does not apply to another.');
+  } else if (registeredBuilt.length) {
+    // WARN, not FAIL. LaunchServices indexes a bundle for merely existing in a
+    // scanned location, and telling that apart from one that was launched and
+    // actually holds a TCC grant needs TCC.db, which is unreadable without Full
+    // Disk Access. Failing the build on an indexed-but-harmless bundle would
+    // make `build:mac` fail every time and train everyone to ignore the check.
+    note('warn', 'A dist/ build is known to LaunchServices',
+      registeredBuilt.map((s) => `${s.path}  (${s.cdhash})`).join('\n'),
+      'Harmless if it was only indexed; a problem if it was ever launched, since\n'
+      + '    that puts a SECOND signature under the same bundle id as the installed\n'
+      + '    app and a Screen Recording grant is keyed to the signature. To be sure:\n'
+      + '    lsregister -u <path> && rm -rf dist/mac dist/mac-arm64');
   } else if (!QUIET) {
-    note('ok', 'One Handrail.app', `${signed[0].path}  (${signed[0].cdhash})`);
+    if (installed.length) {
+      note('ok', 'One installed Handrail.app',
+        `${installed[0].path}  (${installed[0].cdhash})`);
+    }
+    if (built.length) {
+      note('info', `${built.length} unregistered build output(s) in dist/`,
+        built.map((s) => s.path).join('\n')
+        + '\nOrdinary build output, not registered with LaunchServices.');
+    }
   }
   return candidates;
 }

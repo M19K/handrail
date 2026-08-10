@@ -45,9 +45,26 @@ const FAKE_KEY = `sk-or-v1-${'0'.repeat(64)}`;
  * @param {string}  [opts.userDataDir] reuse a directory, to test persistence
  *   across a restart.
  */
+/**
+ * Throwaway userData directories, removed when the run ends.
+ *
+ * A persistence test passes `userDataDir` to reuse one across a restart, so
+ * only the ones created HERE are owned by the harness and safe to remove.
+ * Leaving them behind is not cosmetic: `scripts/doctor-mac.js` counts stray
+ * `handrail-*` temp directories because a leftover one can be the store a
+ * second instance is running against, and 29 per QA run buried that signal.
+ */
+const ownedDirs = [];
+process.on('exit', () => {
+  for (const dir of ownedDirs) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 async function launchApp(opts = {}) {
-  const userDataDir = opts.userDataDir
-    || fs.mkdtempSync(path.join(os.tmpdir(), 'handrail-qa-data-'));
+  let userDataDir = opts.userDataDir;
+  if (!userDataDir) {
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'handrail-qa-data-'));
+    ownedDirs.push(userDataDir);
+  }
 
   const env = { ...process.env, HANDRAIL_QA: '1' };
   // `.env` is read by dotenv at boot and would otherwise leak the developer's

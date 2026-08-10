@@ -76,8 +76,25 @@ function loadStore({ platform, packaged = true, dir }) {
   return mod;
 }
 
+/**
+ * A throwaway userData directory, removed when the process exits.
+ *
+ * These used to be left behind — one per test, every run — and they are not
+ * harmless clutter. `scripts/doctor-mac.js` counts stray `handrail-*` temp
+ * directories precisely because a leftover one can hold a second store that a
+ * stray instance is running against, which is the state that puts the overlay
+ * and onboarding on screen at the same time disagreeing about setup. Debris
+ * from the test suite makes that signal useless.
+ */
+const tempDirs = [];
+process.on('exit', () => {
+  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 function freshDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'handrail-keyowner-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'handrail-keyowner-'));
+  tempDirs.push(dir);
+  return dir;
 }
 
 function writeKeyRecord(dir, record) {

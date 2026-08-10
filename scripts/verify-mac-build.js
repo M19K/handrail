@@ -68,7 +68,7 @@ function fail(message) {
  * bundle id and three different ad-hoc signatures is how a granted screen
  * recording permission stops applying to the app that asked for it.
  */
-async function shutDown(binary, child, userData) {
+async function shutDown(binary, child, userData, appPath) {
   try { process.kill(-child.pid, 'SIGKILL'); } catch (_) { /* already gone */ }
 
   // Everything launched from THIS bundle, helpers included. Matched on the full
@@ -76,6 +76,32 @@ async function shutDown(binary, child, userData) {
   try {
     execFileSync('pkill', ['-9', '-f', binary], { stdio: 'ignore' });
   } catch (_) { /* pkill exits non-zero when nothing matched, which is fine */ }
+
+  // Un-register the bundle we just launched.
+  //
+  // Launching it is what put it into LaunchServices, and a registered dist/
+  // build is a SECOND code signature claiming `com.handrail.app` alongside the
+  // installed app. macOS keys a Screen Recording grant to the signature, so
+  // leaving this registered is what makes a granted permission stop applying to
+  // the app that asked for it. Verifying the build should not cost the user
+  // their permissions.
+  // Both architectures, not just the one launched: electron-builder writes
+  // dist/mac and dist/mac-arm64, and LaunchServices indexes a bundle simply for
+  // existing in a scanned location — it does not have to be run.
+  const lsregister = '/System/Library/Frameworks/CoreServices.framework/Versions/A'
+    + '/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister';
+  if (fs.existsSync(lsregister)) {
+    const dist = path.join(__dirname, '..', 'dist');
+    const bundles = ['mac', 'mac-arm64']
+      .map((d) => path.join(dist, d, 'Handrail.app'))
+      .filter((p) => fs.existsSync(p));
+    if (appPath && !bundles.includes(appPath)) bundles.push(appPath);
+    for (const bundle of bundles) {
+      try {
+        execFileSync(lsregister, ['-u', bundle], { stdio: 'ignore' });
+      } catch (_) { /* best effort: unregistered is the goal, not a hard requirement */ }
+    }
+  }
 
   // Give the kernel a moment, then confirm rather than assume.
   await new Promise((r) => setTimeout(r, 500));
@@ -148,7 +174,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 250));
   }
 
-  await shutDown(binary, child, userData);
+  await shutDown(binary, child, userData, app);
 
   if (!log) {
     fail(
