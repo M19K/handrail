@@ -7,7 +7,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.1.4] — 2026-08-09
+## [0.1.4] — 2026-08-10
 
 **macOS ran for the first time.** Every release since 0.1.0 built a `.dmg` in CI
 that nobody had ever opened. On 2026-08-09 one was opened on a Mac mini M4
@@ -134,6 +134,26 @@ a person downloads works".
   (`src/main/packaging.test.js`) — the tray artwork exists, is mostly
   transparent, and is listed in `build.files`.
 
+- **`npm run doctor`** (`scripts/doctor-mac.js`) — the macOS environment check,
+  and the only layer that looks outside the repo. It exists because an evening
+  went to a failure the other four could not see. Three copies of `Handrail.app`
+  were on one Mac at once — the installed one plus both `dist/` build outputs,
+  the latter registered simply by `verify:mac` launching them — each ad-hoc
+  signed differently while all three claimed `com.handrail.app`. macOS keys a
+  Screen Recording grant to the **code signature**, so the permission the user
+  granted kept applying to a bundle that was not the one asking:
+  `desktopCapturer` threw *"Failed to get sources"* with the switch in System
+  Settings visibly on, and `tccutil` showed three records for the one bundle id.
+
+  Underneath that, two instances ran at once. `verify:mac` launches with its own
+  `--user-data-dir`, which does **not** trip the single-instance lock, so a
+  leftover verification instance ran beside the real app on a different store —
+  one showing the overlay with the user's key, the other showing onboarding
+  claiming no key was set. Same app, two windows, contradicting each other.
+
+  Read-only by design: the remedies touch installed apps and system privacy
+  records. Wired into `verify:mac`, so `build:mac` fails on a dirty machine.
+
 ### Changed
 
 - **Electron 29.4.6 → 43.3.0.** Required, not hygiene: 29 is EOL, is what
@@ -149,12 +169,41 @@ a person downloads works".
 - The tray and the global hotkeys are now registered **before** anything reads
   the key. Whatever else fails, the app stays reachable and quittable.
 
+- **The arrow was dropped on two paths, silently.** A one-step plan is turned
+  into prose and returned as an answer, but the answer branch only read the
+  top-level `target` — which a task-shaped reply does not carry, because its
+  target sits inside the step. A model that correctly said "click the Razor
+  tool" produced prose telling the user to click it and drew nothing.
+  `targetFrom()` now falls back to the first step naming a control, skipping
+  steps like "wait for the installer to finish" that legitimately have none.
+
+  Separately, the answer prompt told the model to omit `target` when it could
+  not see the control, so an unsure model never reached `locate()` — the second
+  pass that exists only to find controls, is better at small ones, and already
+  reports `found:false` safely. Asking about something in the Dock is exactly
+  that case. The prompt now requires a target whenever the question is itself
+  about locating something.
+
+- **The suites leaked a temp directory per test** — 21 from key-ownership, 29
+  from Playwright, 3 from the store tests, never removed. Not cosmetic: the
+  doctor counts stray `handrail-*` directories precisely because a leftover one
+  can be the store a second instance is running against, and suite debris buried
+  that signal. 53 leaked directories became 0.
+
 ### Known gaps
 
 Still untested on macOS, honestly: **Retina** (the test machine is 1920×1080 at
 `scaleFactor: 1`, so the 2x arrow geometry remains unverified), **multi-monitor**,
-**Intel/x64** (built, never run), and **a live arrow landing on a real control** —
-the renderer is covered by smoke, but no real question returned a `target`.
+and **Intel/x64** (built, never run).
+
+**The arrow itself is now verified on macOS**, but by injection rather than by a
+live model call: a known box was pushed through `parseBox` → `boxToScreenRect` →
+`arrowLayout` → the real arrow window, and the computed centre landed on the
+target exactly while the tip sat 14px off the control edge, matching
+`ARROW.tipGap`. That proves the coordinate pipeline and the window placement. It
+does not prove Retina, and it does not prove the model can resolve a ~40px Dock
+icon on a 1x display — which it could not, and which is a model-capability limit,
+not a bug that got fixed here.
 
 ---
 
