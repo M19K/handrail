@@ -77,8 +77,68 @@ app.whenReady().then(async () => {
     console.log(`  ok   icon-${String(size).padEnd(4)}.png    ${size}x${size}`);
   }
 
+  writeIcns(master);
+
   win.destroy();
   fs.unlinkSync(pageFile);
   console.log(`\nicons in ${OUT}`);
   app.quit();
 });
+
+/**
+ * Build `build/icon.icns` with Apple's own `iconutil`, rather than letting
+ * electron-builder derive one from `icon.png`.
+ *
+ * This is not belt-and-braces, it fixes a visible bug. electron-builder's
+ * generated `.icns` stores its small sizes in the `icp4`, `icp5` and `icp6`
+ * chunk types. Those types are ambiguous — the format allows either PNG or raw
+ * pixel data in them and there is no discriminator — and macOS 26 reads them as
+ * raw. The result is that the correct 16px artwork is decoded as noise.
+ *
+ * Seen in System Settings → Privacy & Security → Screen & System Audio
+ * Recording, where Handrail's row showed a block of coloured static next to its
+ * name while the Dock and Finder, which use the larger chunks, looked right.
+ * Extracting the `icp4` chunk and opening it confirmed the PNG inside was a
+ * perfectly good icon: the file was fine, the container was wrong.
+ *
+ * `iconutil` never emits those types. It writes `ic11`/`ic12` for the small
+ * Retina sizes and the legacy `is32`/`s8mk` pair for 16x16, which is what every
+ * macOS actually agrees on. It ships with macOS, so this costs no dependency —
+ * it just cannot run anywhere else, hence the platform guard. A non-mac build
+ * machine keeps electron-builder's fallback, which is only wrong on macOS
+ * anyway.
+ */
+function writeIcns(master) {
+  if (process.platform !== 'darwin') {
+    console.log('  skip icon.icns        (needs macOS iconutil)');
+    return;
+  }
+
+  const { execFileSync } = require('child_process');
+  const iconset = path.join(OUT, 'icon.iconset');
+  fs.rmSync(iconset, { recursive: true, force: true });
+  fs.mkdirSync(iconset, { recursive: true });
+
+  // The names are a fixed contract with iconutil — it derives the chunk type
+  // from the filename, so these are not free-form.
+  const VARIANTS = [
+    [16, 'icon_16x16.png'], [32, 'icon_16x16@2x.png'],
+    [32, 'icon_32x32.png'], [64, 'icon_32x32@2x.png'],
+    [128, 'icon_128x128.png'], [256, 'icon_128x128@2x.png'],
+    [256, 'icon_256x256.png'], [512, 'icon_256x256@2x.png'],
+    [512, 'icon_512x512.png'], [1024, 'icon_512x512@2x.png'],
+  ];
+  for (const [size, name] of VARIANTS) {
+    const image = size === MASTER ? master : master.resize({ width: size, height: size, quality: 'best' });
+    fs.writeFileSync(path.join(iconset, name), image.toPNG());
+  }
+
+  try {
+    execFileSync('iconutil', ['-c', 'icns', iconset, '-o', path.join(OUT, 'icon.icns')]);
+    console.log('  ok   icon.icns        (iconutil, no ambiguous icp4/5/6 chunks)');
+  } catch (err) {
+    console.log(`  WARN iconutil failed: ${err.message}`);
+  } finally {
+    fs.rmSync(iconset, { recursive: true, force: true });
+  }
+}

@@ -103,7 +103,8 @@
     "dmg": {
       "title": "Handrail",
       "backgroundColor": "#131519"
-    }
+    },
+    "beforePack": "scripts/beforepack-build-id.js"
   },
   "homepage": "https://github.com/M19K/handrail",
   "repository": {

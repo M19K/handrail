@@ -77,7 +77,34 @@ const OWNERSHIP_IS_LOAD_BEARING = process.platform === 'darwin';
  * solves.
  */
 function buildIdentity() {
-  return `${app.isPackaged ? 'app' : 'dev'}-${app.getVersion()}`;
+  const kind = app.isPackaged ? 'app' : 'dev';
+
+  /**
+   * A packaged build carries a unique id stamped in by
+   * `scripts/beforepack-build-id.js`.
+   *
+   * The version number alone is not specific enough. An ad-hoc signature is
+   * unique per BUILD, so two builds of the same version are different owners to
+   * the Keychain. Fingerprinting as `app-0.1.4` let a rebuilt 0.1.4 think it
+   * owned a key saved by an earlier 0.1.4, call into the Keychain, and trigger
+   * the password prompt this guard exists to avoid — observed live on
+   * 2026-08-09.
+   *
+   * Read once, at module load, off a file inside the asar. No process spawn and
+   * nothing on the boot path that can block.
+   */
+  if (app.isPackaged) {
+    try {
+      const stamped = fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'build-id.txt'), 'utf8').trim();
+      if (stamped) return `${kind}-${app.getVersion()}-${stamped}`;
+    } catch (_) {
+      // No stamp: an older build, or one packaged without the hook. Fall
+      // through to the version, which is coarser but still refuses a key from a
+      // different release.
+    }
+  }
+
+  return `${kind}-${app.getVersion()}`;
 }
 
 class Store {

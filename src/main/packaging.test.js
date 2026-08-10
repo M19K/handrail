@@ -138,6 +138,42 @@ test('every path main.js looks for a mac tray icon in is packaged', () => {
   }
 });
 
+test('the app icon avoids the icns chunk types macOS renders as static', () => {
+  /**
+   * `icp4`, `icp5` and `icp6` may hold either PNG or raw pixels and carry no
+   * discriminator, so macOS 26 guesses — and guesses raw. electron-builder's
+   * generated .icns put the small sizes there, and Handrail's row in System
+   * Settings → Privacy & Security showed a block of coloured noise beside its
+   * name while the Dock, which reads the larger chunks, looked correct.
+   *
+   * The artwork was never the problem: extracting the icp4 chunk produced a
+   * perfectly good 16px PNG. `iconutil` writes ic04/ic05/ic11/ic12 instead,
+   * which every macOS agrees on.
+   */
+  const icns = path.join(ROOT, 'build', 'icon.icns');
+  assert.ok(fs.existsSync(icns), 'build/icon.icns is missing — run `npx electron scripts/make-icons.js`');
+
+  const b = fs.readFileSync(icns);
+  assert.equal(b.toString('ascii', 0, 4), 'icns');
+
+  const AMBIGUOUS = ['icp4', 'icp5', 'icp6'];
+  const found = [];
+  let pos = 8;
+  while (pos + 8 <= b.length) {
+    const type = b.toString('ascii', pos, pos + 4);
+    const len = b.readUInt32BE(pos + 4);
+    if (len < 8 || pos + len > b.length) break;
+    if (AMBIGUOUS.includes(type)) found.push(type);
+    pos += len;
+  }
+
+  assert.deepEqual(
+    found, [],
+    `icon.icns contains ${found.join(', ')} — macOS decodes those as raw pixels and the ` +
+    'small icon renders as static. Regenerate with `npx electron scripts/make-icons.js`.',
+  );
+});
+
 test('mac build does not claim microphone or camera access', () => {
   /**
    * v1 cut speech and has never used the camera.

@@ -94,6 +94,25 @@ a person downloads works".
   Onboarding says what is wrong, opens the exact Privacy & Security pane, and
   offers a **Restart Handrail** button.
 
+- **The app icon rendered as coloured static in System Settings.** Handrail's row
+  in Privacy & Security showed a block of noise beside its name, while the Dock
+  and Finder looked correct. electron-builder's generated `.icns` puts the small
+  sizes in the `icp4`/`icp5`/`icp6` chunk types, which may hold either PNG or raw
+  pixels and carry no discriminator — macOS 26 reads them as raw. Extracting the
+  chunk produced a perfectly good 16px PNG: the artwork was never wrong, the
+  container was. `scripts/make-icons.js` now builds `build/icon.icns` with
+  Apple's `iconutil`, which emits the types every macOS agrees on, and a test
+  fails if the ambiguous ones come back.
+
+- **The keychain guard was one build too coarse.** Fingerprinting a build as
+  `app-<version>` correctly separated a dev run from a packaged one and one
+  release from the next, but not two builds of the *same* version — and an
+  ad-hoc signature is unique per build, not per version. A rebuilt 0.1.4 reading
+  a key saved by an earlier 0.1.4 believed it was the owner, called into the
+  Keychain and produced the password prompt the guard exists to prevent.
+  `scripts/beforepack-build-id.js` now stamps a unique id into every packaged
+  build. Caught live during verification, not by a test.
+
 - **The build claimed microphone and camera access it never uses.** Electron's
   placeholder strings ("This app needs access to the microphone") shipped in the
   packaged `Info.plist` for features v1 cut. Deleted at build time.

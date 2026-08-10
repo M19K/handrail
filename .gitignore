@@ -14,3 +14,11 @@ build/*
 !build/icon.png
 !build/icon-*.png
 !build/icon.ico
+# Committed rather than left to electron-builder, which derives an .icns whose
+# small sizes land in the ambiguous icp4/icp5/icp6 chunks. macOS 26 decodes
+# those as raw pixels, so the 16px icon rendered as coloured static in System
+# Settings. iconutil emits the types macOS agrees on — see scripts/make-icons.js.
+!build/icon.icns
+
+# Stamped per build by scripts/beforepack-build-id.js; never committed.
+assets/build-id.txt
