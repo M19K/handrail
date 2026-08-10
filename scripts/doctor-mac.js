@@ -117,7 +117,6 @@ function checkBundles() {
   // every single build, since electron-builder always writes dist/mac*.
   const installed = signed.filter((s) => !s.path.includes('/dist/'));
   const built = signed.filter((s) => s.path.includes('/dist/'));
-  const registeredBuilt = built.filter((s) => isRegistered(s.path));
 
   if (installed.length > 1) {
     note('error', `${installed.length} installed copies of Handrail.app`,
@@ -125,19 +124,28 @@ function checkBundles() {
       'Keep one and delete the rest. Each carries its own ad-hoc signature but\n'
       + '    the same bundle id, so a Screen Recording grant given to one silently\n'
       + '    does not apply to another.');
-  } else if (registeredBuilt.length) {
-    // WARN, not FAIL. LaunchServices indexes a bundle for merely existing in a
-    // scanned location, and telling that apart from one that was launched and
-    // actually holds a TCC grant needs TCC.db, which is unreadable without Full
-    // Disk Access. Failing the build on an indexed-but-harmless bundle would
-    // make `build:mac` fail every time and train everyone to ignore the check.
-    note('warn', 'A dist/ build is known to LaunchServices',
-      registeredBuilt.map((s) => `${s.path}  (${s.cdhash})`).join('\n'),
-      'Harmless if it was only indexed; a problem if it was ever launched, since\n'
-      + '    that puts a SECOND signature under the same bundle id as the installed\n'
-      + '    app and a Screen Recording grant is keyed to the signature. To be sure:\n'
-      + '    lsregister -u <path> && rm -rf dist/mac dist/mac-arm64\n'
-      + `    then re-grant cleanly: tccutil reset ScreenCapture ${BUNDLE_ID}`);
+  } else if (built.length) {
+    // ERROR on PRESENCE, not on registration. This check used to warn only when
+    // a dist/ bundle was registered with LaunchServices, on the reasoning that
+    // an unlaunched build output is harmless. That reasoning missed how a
+    // person actually opens an app: SPOTLIGHT INDEXES ANY BUNDLE ON DISK.
+    //
+    // After a rebuild, searching "Handrail" in Finder offered three results —
+    // Applications, mac-arm64 and mac — with no way to tell which was the
+    // installed one. Picking the wrong entry runs a bundle whose ad-hoc
+    // signature differs from the one holding the Screen Recording grant, so the
+    // app reports it cannot see the screen while Settings shows the toggle on.
+    //
+    // Existence is exposure. There is exactly one Handrail on this machine or
+    // the check fails.
+    note('error', `${built.length} extra Handrail.app bundle(s) outside /Applications`,
+      built.map((s) => `${s.path}  (${s.cdhash}${isRegistered(s.path) ? ', registered' : ''})`).join('\n'),
+      'Spotlight offers these alongside the installed app, and each carries its\n'
+      + '    own ad-hoc signature under the same bundle id — so a Screen Recording\n'
+      + '    grant given to one does not apply to another. Build output must not\n'
+      + '    outlive the build:\n'
+      + '    rm -rf dist/mac dist/mac-arm64\n'
+      + `    then, if a grant is misbehaving: tccutil reset ScreenCapture ${BUNDLE_ID}`);
   } else if (!QUIET) {
     if (installed.length) {
       note('ok', 'One installed Handrail.app',

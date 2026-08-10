@@ -25,6 +25,27 @@ not by a test — every suite was green while it happened.
   Reproduced from: *"how do I route my internet through my other computer?"*
   asked over Tailscale's Exit Nodes pane.
 
+- **Three copies of Handrail were launchable at once, and Spotlight offered all
+  three.** A rebuild leaves `dist/mac/Handrail.app` and
+  `dist/mac-arm64/Handrail.app` on disk. Searching "Handrail" in Finder returned
+  those alongside the installed app with nothing to distinguish them, and each
+  carries its own ad-hoc signature under the same bundle id — so launching the
+  wrong one runs an app the Screen Recording grant does not cover, and Handrail
+  reports it cannot see the screen while System Settings shows the toggle on.
+
+  `build:mac` now deletes the unpacked bundles once the build is verified, and
+  `npm run doctor` FAILS on any extra bundle rather than noting it. The old
+  check only warned when a bundle was registered with LaunchServices, which
+  missed the way people actually open apps: Spotlight indexes anything on disk.
+
+- **Clicking the tray icon during onboarding opened the overlay anyway.** The
+  tray and hotkeys are registered before the key is read, deliberately, so a
+  boot failure cannot leave the app unreachable. But nothing on those paths
+  checked whether setup was finished, so clicking the new menu bar icon put a
+  ready overlay bar on screen on top of the setup window — one app showing two
+  windows, which reads exactly like two copies running at once. The relaunch
+  path already had this guard; the tray and hotkey paths did not.
+
 - **The prompt had no shape for what it was asking for.** The reply rules ask
   for "a lead plus a list", and the JSON schema offered no object that could
   hold one — the checklist shape has no lead-in field. The schema now says a
