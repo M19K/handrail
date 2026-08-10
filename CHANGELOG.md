@@ -7,6 +7,46 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.6] — 2026-08-10
+
+**The Windows build had no tray icon, and never had a working panic key.** Both
+shipped in every release since 0.1.0. Found by downloading the released
+installer and running it — the one thing none of the test suites do.
+
+### Fixed
+
+- **No tray icon on Windows.** The packaged app could not find its own tray
+  artwork, so it ran with no system-tray presence at all. Because the overlay
+  stays out of the taskbar, that left no way to quit it once it was hidden.
+  Every build made during development had a tray, which is exactly why nobody
+  caught it — only the released one was broken.
+- **The panic hotkey did nothing on Windows.** It was Ctrl+Shift+Esc, which
+  Windows keeps for Task Manager and will not hand to any app. It is now
+  **Ctrl+Alt+H**. That is the shortcut that hides Handrail instantly when it is
+  on a screen you are sharing, so it mattered that it silently did not exist.
+- Together those two were the bad case: the overlay on a shared screen, no
+  shortcut to hide it, and no tray icon to quit from.
+
+### Added
+
+- A check that launches the real packaged app and fails the build if it cannot
+  start or has no tray icon. It was proved by deliberately breaking the build
+  and confirming it fails. It now runs on every release, for both platforms.
+- `npm run doctor` works on Windows: it reports duplicate installations,
+  leftover build output, shortcuts pointing at the wrong copy, and whether
+  Smart App Control will block the app. It previously did nothing there.
+
+### Known
+
+- **Windows 11 Smart App Control can refuse to open Handrail outright**, with no
+  "Run anyway" to click. Use the `Handrail-Setup` installer rather than the
+  portable build if you hit it. Only code signing fixes this properly, and that
+  is a paid certificate this project does not have.
+- The tray icon was confirmed from the app's own log rather than photographed —
+  a fullscreen app was covering the taskbar at the time.
+
+---
+
 ## [0.1.5] — 2026-08-10
 
 **A reply that promised a list and delivered nothing.** Found in a live demo,
