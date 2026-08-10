@@ -51,6 +51,42 @@ function fail(message) {
   process.exit(1);
 }
 
+/**
+ * Leave nothing running and nothing on disk.
+ *
+ * This mattered more than it looks. The first version killed the process group
+ * and hoped. Electron's helper processes are not always in it, so the app could
+ * survive — and because this script launches with its own `--user-data-dir`, the
+ * survivor did NOT collide with the single-instance lock of the app the user
+ * actually installed. Both ran at once, on different stores: the real one with
+ * the user's key showing the overlay, this one with an empty store showing
+ * onboarding. Two windows, same app, contradicting each other.
+ *
+ * It also left a `handrail-verify-*` directory in the temp folder per run, and
+ * — because launching a bundle registers it — put the two `dist/` builds into
+ * LaunchServices and TCC alongside the installed one. Three apps with the same
+ * bundle id and three different ad-hoc signatures is how a granted screen
+ * recording permission stops applying to the app that asked for it.
+ */
+async function shutDown(binary, child, userData) {
+  try { process.kill(-child.pid, 'SIGKILL'); } catch (_) { /* already gone */ }
+
+  // Everything launched from THIS bundle, helpers included. Matched on the full
+  // executable path so a differently-located Handrail is never touched.
+  try {
+    execFileSync('pkill', ['-9', '-f', binary], { stdio: 'ignore' });
+  } catch (_) { /* pkill exits non-zero when nothing matched, which is fine */ }
+
+  // Give the kernel a moment, then confirm rather than assume.
+  await new Promise((r) => setTimeout(r, 500));
+  try {
+    const left = execFileSync('pgrep', ['-f', binary], { stdio: 'pipe' }).toString().trim();
+    if (left) console.log(`  WARN processes survived shutdown: ${left.split('\n').join(', ')}`);
+  } catch (_) { /* pgrep exits non-zero when nothing is left, which is the good case */ }
+
+  fs.rmSync(userData, { recursive: true, force: true });
+}
+
 function findApp() {
   if (process.argv[2]) return process.argv[2];
   // Prefer the architecture this machine can actually execute.
@@ -112,7 +148,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 250));
   }
 
-  try { process.kill(-child.pid, 'SIGKILL'); } catch (_) { /* already gone */ }
+  await shutDown(binary, child, userData);
 
   if (!log) {
     fail(
