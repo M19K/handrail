@@ -173,6 +173,49 @@ test('respond turns a one-step plan into prose, not a checklist and not JSON', a
   assert.equal(out.markdown, 'Click Appearance');
 });
 
+test('a one-step plan keeps its arrow', async () => {
+  /**
+   * The bug this pins was silent from both ends.
+   *
+   * A one-step plan is turned into prose and returned as an answer, and the
+   * answer branch only read the TOP-LEVEL `target` — which a task-shaped reply
+   * does not have, because its target sits inside the step. So the model
+   * correctly said "click the Razor tool", the user was told to click it, and
+   * no arrow was ever drawn. `turn.js` skipped `_pointAtTarget` because the
+   * target was empty, and nothing logged because nothing failed.
+   *
+   * Drawing the arrow is the one thing this product does that nothing else
+   * does, so the quiet path deserves a test more than the loud one.
+   */
+  const { llm } = stubbed(JSON.stringify({
+    kind: 'task',
+    title: 'Split the clip',
+    steps: [{ text: 'Click the Razor tool', target: 'Razor tool in the left toolbar' }],
+  }));
+  const out = await llm.respond({ prompt: 'how do I split a clip?' });
+  assert.equal(out.kind, 'answer');
+  assert.equal(out.markdown, 'Click the Razor tool');
+  assert.equal(out.target, 'Razor tool in the left toolbar');
+});
+
+test('a plan whose first step has no target still points at the first one that does', async () => {
+  // "Wait for it to finish" is a legitimate step with nothing to point at. The
+  // arrow belongs on the first step that names a control, not nowhere.
+  const { llm } = stubbed(JSON.stringify({
+    kind: 'task',
+    title: 'Install it',
+    steps: [
+      { text: 'Wait for the installer to finish', target: '' },
+      { text: 'Click Continue', target: 'Continue button at the bottom right' },
+    ],
+  }));
+  const out = await llm.respond({ prompt: 'now what?' });
+  // Two steps, so this stays a checklist — the per-step targets are what the
+  // watcher uses. Asserting the step kept its target, not the answer path.
+  assert.equal(out.kind, 'task');
+  assert.equal(out.steps[1].target, 'Continue button at the bottom right');
+});
+
 test('respond passes through a target so an ordinary answer can point', async () => {
   const { llm } = stubbed(JSON.stringify({
     kind: 'answer', markdown: 'Right-click the tab.', target: 'the tab in the sidebar', completedStep: 2,

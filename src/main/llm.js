@@ -97,6 +97,39 @@ function answerFrom(parsed, raw) {
   return String(raw || '').trim();
 }
 
+/**
+ * What the arrow should point at, wherever the model put it.
+ *
+ * The schema has two homes for `target`: top level on an answer, and per-step
+ * inside a checklist. A ONE-STEP plan is turned into prose by `answerFrom` and
+ * returned as an answer — and the answer branch only ever read the top-level
+ * field, which a task-shaped reply does not have. So a model that correctly
+ * said "click the Razor tool", as a single step, produced prose telling the
+ * user to click something and no arrow at all.
+ *
+ * Silent, and invisible from either end. The reply looked right, `turn.js`
+ * never entered `_pointAtTarget` because `result.target` was empty, and nothing
+ * was logged because nothing had failed. The arrow is the one thing this
+ * product does that nothing else does, so the path that quietly skips it is
+ * worth more care than the path that errors.
+ */
+function targetFrom(parsed) {
+  const top = parsed.target ? String(parsed.target).trim() : '';
+  if (top) return top;
+
+  // The first step that names something — a plan whose opening step is
+  // "wait for the installer to finish" legitimately has no target, and the
+  // arrow belongs on the first step that does.
+  if (Array.isArray(parsed.steps)) {
+    for (const step of parsed.steps) {
+      const t = step && step.target ? String(step.target).trim() : '';
+      if (t) return t;
+    }
+  }
+
+  return '';
+}
+
 class Llm {
   /**
    * @param {() => string|null} getKey
@@ -213,7 +246,7 @@ class Llm {
       // model returned. It becomes an ordinary answer instead.
       markdown: answerFrom(parsed, res.text),
       // An ordinary answer can point at something too — see turn.js.
-      target: parsed.target ? String(parsed.target).trim() : '',
+      target: targetFrom(parsed),
       completedStep: Number.isInteger(step) && step > 0 ? step - 1 : null,
     };
   }
