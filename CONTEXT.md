@@ -104,12 +104,24 @@ GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
   directly, including a hand-written `.ico` encoder.
 - **Speech deleted.** No Whisper, no Azure, no `node-record-lpcm16`.
 
-### Verification — three layers, all green
+### Verification — four layers, all green
 
-- `npm test` — **99 unit tests** (geometry, turn state machine, `respond()`,
+- `npm test` — **117 unit tests** (geometry, turn state machine, `respond()`,
   capture source selection, store recovery, response shapes, key-format
-  detection). Node's built-in runner, no framework, no Electron. **This is what
-  gates CI, so it must never need a display or a binary.**
+  detection, packaging, per-build key ownership). Node's built-in runner, no
+  framework, no Electron. **This is what gates CI, so it must never need a
+  display or a binary.**
+- `npm run doctor` — **the macOS environment check** (`scripts/doctor-mac.js`).
+  Read-only, and the only layer that looks OUTSIDE the repo. It exists because
+  an evening was lost to a failure the other three could not see: three copies
+  of `Handrail.app` on one Mac — the installed one plus both `dist/` build
+  outputs — each ad-hoc signed differently and all three claiming
+  `com.handrail.app`. macOS keys a Screen Recording grant to the signature, so
+  the permission the user granted kept applying to a bundle that was not the one
+  asking, while the switch in System Settings stayed on the whole time. It also
+  catches two instances running against different stores, which is what puts the
+  overlay and onboarding on screen at once contradicting each other. Wired into
+  `verify:mac`, so `build:mac` now fails on a dirty machine.
 - `npx electron scripts/smoke.js` — **63 checks** against the real main process
   and real preload, writing screenshots to `%TEMP%\handrail-smoke`.
 - `npm run qa` — **29 Playwright `_electron` tests** that launch the real app

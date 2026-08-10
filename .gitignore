@@ -22,3 +22,4 @@ build/*
 
 # Stamped per build by scripts/beforepack-build-id.js; never committed.
 assets/build-id.txt
+.gstack/

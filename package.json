@@ -11,13 +11,14 @@
     "dev:renderer": "electron renderer/dev.js",
     "build": "electron-builder",
     "build:mac": "electron-builder --mac && npm run verify:mac",
-    "verify:mac": "node scripts/verify-mac-build.js",
+    "verify:mac": "node scripts/verify-mac-build.js && node scripts/doctor-mac.js",
     "tray-icons": "node scripts/make-tray-icons.js",
     "build:win": "electron-builder --win",
     "pack": "electron-builder --dir",
     "clean": "rimraf dist",
     "qa": "node --test --test-concurrency=1 tests/qa/*.test.js",
-    "compare-models": "electron scripts/compare-models.js"
+    "compare-models": "electron scripts/compare-models.js",
+    "doctor": "node scripts/doctor-mac.js"
   },
   "author": {
     "name": "Maaz Kazi",
