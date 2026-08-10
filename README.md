@@ -45,7 +45,10 @@ never crosses into the app's UI layer after setup — only a masked hint does.
 
 ## Install
 
-Grab an installer from [Releases](../../releases).
+Grab an installer from [Releases](../../releases). Every release carries both
+platforms — two `.dmg` files for macOS (`-arm64` for Apple Silicon, the other
+for Intel) and the Windows `.exe`. If a release is ever missing your platform,
+that is a mistake in the release, not a decision.
 
 **Windows** — run the `.exe`. It is unsigned, so SmartScreen warns on first
 run: **More info** → **Run anyway**.
@@ -137,9 +140,20 @@ scaling and multi-monitor setups a non-issue by construction — see
 ```bash
 npm start              # run the app
 npm test               # unit tests, no Electron needed
+npm run qa             # Playwright, against the real Electron app
 npm run dev:renderer   # drive the UI through every state, screenshot each
 npx electron scripts/smoke.js   # boot the real windows and check them
+npm run verify:mac     # launch the PACKAGED .app — the only check that does
+npm run doctor         # the macOS environment around the app, not the app
 ```
+
+The suites are layered on purpose, because each is blind to the one below it.
+The unit tests never launch Electron, `smoke.js` never opens the packaged
+bundle, `verify:mac` never asks whether a reply was any good, and none of them
+can see the machine. `src/main/llm.scenarios.test.js` is the newest layer and
+the least obvious: it puts real user questions through the real reply path and
+asserts what a person would notice — that a reply is never empty, never raw
+JSON, and never ends on a colon promising a list it does not deliver.
 
 `npm run dev:renderer` runs the overlay against a mock IPC bridge, so the whole
 interface can be worked on without a running main process or an API key.

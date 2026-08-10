@@ -7,6 +7,65 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.5] — 2026-08-10
+
+**A reply that promised a list and delivered nothing.** Found in a live demo,
+not by a test — every suite was green while it happened.
+
+### Fixed
+
+- **Half of an answer was being thrown away.** The model can return a reply
+  carrying both an opening sentence and a list of steps. Handrail returned the
+  sentence and silently discarded the steps, so a reply that ended *"here's the
+  full path:"* showed the lead-in, the colon, and nothing else — and no arrow,
+  because the step that named the on-screen control went into the bin with the
+  rest. Nothing was truncated and nothing timed out; the complete answer arrived
+  and was cut in half on the way to the screen.
+
+  Reproduced from: *"how do I route my internet through my other computer?"*
+  asked over Tailscale's Exit Nodes pane.
+
+- **The prompt had no shape for what it was asking for.** The reply rules ask
+  for "a lead plus a list", and the JSON schema offered no object that could
+  hold one — the checklist shape has no lead-in field. The schema now says a
+  lead-in plus a list is the answer shape, forbids ending on a colon, and states
+  that the prose and bullet ceilings are separate budgets, so running short on
+  sentences is never a reason to stop before the list.
+
+- **Shape is now chosen by the work, not the wording.** "How do I route my
+  internet through my other computer?" reads like one action and is five.
+
+- **OpenRouter traffic was attributed to another project.** `HTTP-Referer` and
+  `X-Title` still carried upstream's repo and name on every live call, and
+  OpenRouter uses both for its public app leaderboard.
+
+- `Llm.stream()` passed neither an output ceiling nor an abort signal, unlike
+  every other request in the file. It is unreachable code — nothing calls it —
+  so neither defect could reach a user, but both were wrong.
+
+### Added
+
+- `src/main/llm.scenarios.test.js` — the reply-quality layer. Real user
+  questions through the real reply path, asserting what a person would notice: a
+  reply is never empty, never raw JSON, and never promises a list it does not
+  deliver. The failure above passes every other suite in this repo and fails
+  this one.
+- CI now runs `verify:mac` on the packaged macOS build before a release is cut.
+
+### Changed
+
+- Upstream association reduced to what Apache 2.0 requires. Four unmodified
+  upstream files and one misspelled upstream asset folder were unreferenced dead
+  weight and were removed rather than edited.
+- The README no longer quotes a diff stat that went stale on every commit.
+
+### Known limits
+
+- Unchanged from 0.1.4: unsigned on both platforms, and never run on a Retina
+  display, a mixed-DPI multi-monitor setup, or Intel x64.
+
+---
+
 ## [0.1.4] — 2026-08-10
 
 **macOS ran for the first time.** Every release since 0.1.0 built a `.dmg` in CI
