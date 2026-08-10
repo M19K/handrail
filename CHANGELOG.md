@@ -334,10 +334,9 @@ First release. A desktop overlay that sees your screen and walks you through
 software step by step, aimed at people who can follow an instruction but cannot
 diagnose why step 4 failed.
 
-Handrail is a fork of [OpenCluely](https://github.com/TechyCSR/OpenCluely)
-(Apache-2.0) that keeps its transparent always-on-top overlay and replaces
-essentially everything else. Commit `7909792` is the pristine upstream import;
-`git diff 7909792..HEAD` is 93 files, +13,146 / −21,781.
+Commit `7909792` is the pristine upstream import; `git diff 7909792..HEAD` is
+the original work. Upstream and third-party credit is recorded in
+[NOTICE](NOTICE).
 
 ### Added
 

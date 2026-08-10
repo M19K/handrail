@@ -46,18 +46,7 @@ by TechyCSR, licensed under the Apache License, Version 2.0.
 
 Copyright (c) TechyCSR — OpenCluely
 
-What remains from upstream, and only what remains:
-
-  - the approach to the transparent, always-on-top, capture-excluded overlay
-    window, which Handrail's own window layer builds on
-  - a small number of unmodified support files and assets
-
-Files that were derived from upstream and then changed carry a notice saying so,
-as Section 4(b) of the License requires. Everything else in this repository was
-written from scratch.
-
-The name "OpenCluely" is not licensed to this project, which is why this product
-is called Handrail. OpenCluely is an interview assistant; Handrail is not, and
-deliberately does not support that use case.
-
-Upstream published no NOTICE file, so nothing from one is carried forward here.
+Files derived from upstream and then changed carry a notice saying so, as
+Section 4(b) of the License requires. Everything else here was written from
+scratch. Upstream published no NOTICE file, so nothing from one is carried
+forward.

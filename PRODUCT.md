@@ -40,7 +40,7 @@ API key, thread history. There is no separate dashboard app.
 - **Full screen only.** No region select, no window picker. Simplicity over options.
 - **Multi-monitor:** captures whichever monitor the overlay is currently on.
   Move the overlay to change what it sees. Intuitive, no configuration.
-- A clear **"screenshot captured"** indicator (Cluely-style) tells the user it
+- A clear **"screenshot captured"** indicator tells the user it
   happened. **No thumbnail preview** — full screen capture makes it redundant.
 
 ### Window behaviour
@@ -218,8 +218,8 @@ Must be stated plainly during onboarding, because it's a genuine differentiator:
 ## Invisibility
 
 **Kept in full.** Not the product's purpose, but genuinely useful and already
-built. Handrail can be used the way Cluely and Pluely are — the difference is it
-does not record meetings.
+built. Handrail stays out of screen recordings and screen shares; it does not
+record meetings.
 
 ---
 
@@ -238,14 +238,12 @@ capture. Not a general file manager.
 
 ## Design direction
 
-**Take from Cluely:** the collapsed pill, compact command bar, expand-on-answer
-panel, copy buttons, overall restraint.
-
-**Take from Pluely:** the drag grip affordance, thread-history side panel,
+**Adopted:** a collapsed pill, a compact command bar, an expand-on-answer
+panel, copy buttons, a drag grip affordance, a thread-history side panel, and
 file attach.
 
-**Reject from Pluely:** navigational sprawl. Its Home icon, Dashboard button and
-gear all lead to the same place — three affordances, one destination.
+**Rejected:** navigational sprawl. A Home icon, a Dashboard button and a gear
+that all lead to the same place are three affordances serving one destination.
 
 **Governing principle:** don't bombard the user with options. Keep the screen
 clutter-free. Every added control must earn its place.

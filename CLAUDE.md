@@ -11,9 +11,9 @@ model what to do, and draws an arrow at the real control on the real screen.
 Aimed at people who can follow an instruction but cannot diagnose why step 4
 failed.
 
-Fork of OpenCluely (Apache-2.0). Commit `7909792` is the pristine upstream
-import; everything after it is original work, so `git diff 7909792..HEAD` is the
-portfolio artifact.
+Commit `7909792` is the pristine upstream import; everything after it is
+original work, so `git diff 7909792..HEAD` is the portfolio artifact. Upstream
+credit and the licence position are in `NOTICE` — don't restate them elsewhere.
 
 ## Rules that have bitten us
 

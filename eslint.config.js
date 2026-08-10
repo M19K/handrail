@@ -68,7 +68,6 @@ module.exports = [
       'dist/**',
       'build/**',
       '.gstack/**',
-      'assests/vendor/**',
     ],
   },
 
