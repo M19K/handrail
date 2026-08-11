@@ -154,13 +154,19 @@ class TurnController {
     let shot = null;
     let display = null;
 
+    const t0 = Date.now();
+    let tCapture = 0;
+
     if (useCapture) {
+      const capStart = Date.now();
       display = displayForWindow(this.getOverlay());
       // Handrail is excluded from its own screenshot without anything moving
       // on screen — see windows.js § excludeFromCapture.
       const shotResult = await this._captureWithoutSelf(display, 'full');
       if (turn.cancelled) return;
       shot = shotResult.buffer;
+      tCapture = Date.now() - capStart;
+      console.log(`[timing] capture ${tCapture}ms, ${Math.round(shot.length / 1024)}KB sent`);
       this.emit({ type: 'capture', turnId: turn.id });
 
       if (!captureMatchesDisplay(shotResult.size, display)) {
@@ -174,6 +180,7 @@ class TurnController {
     this.emit({ type: 'thinking', turnId: turn.id });
 
     const thread = this._currentThread();
+    const askStart = Date.now();
     const result = await this.llm.respond({
       prompt: text,
       screenshot: shot,
@@ -183,6 +190,15 @@ class TurnController {
       signal: turn.abort && turn.abort.signal,
     });
     if (turn.cancelled) return;
+
+    // The user measured ~20-25s for "hello". This says where it goes: the
+    // screenshot is captured and uploaded on EVERY turn whether the question
+    // needs it or not, and `respond()` is a single non-streaming call, so
+    // nothing renders until the whole reply has arrived.
+    console.log(
+      `[timing] answer ${Date.now() - askStart}ms  (capture ${tCapture}ms, `
+      + `total ${Date.now() - t0}ms, target=${JSON.stringify(result.target || '')})`,
+    );
 
     if (result.kind === 'task') {
       await this._startTask(turn, result, display, text, shot);
@@ -296,7 +312,23 @@ class TurnController {
    * the one thing this product does that nothing else does.
    */
   async _pointAtTarget({ display, screenshot, target, instruction }) {
-    if (!display || !target) return this.clearArrow();
+    // EVERY exit below is logged.
+    //
+    // This function had four silent `return this.clearArrow()` exits and no log
+    // line on any of them. When the arrow stopped appearing on real questions,
+    // the shipped build could not say which of the four had fired — the log
+    // showed nothing at all after startup. The one feature that differentiates
+    // this product was failing with zero diagnostics, which turned a five-minute
+    // question into an unanswerable one.
+    if (!display) { console.warn('[point] no display for this turn; not pointing'); return this.clearArrow(); }
+    if (!target) {
+      // Overwhelmingly the most likely cause: the model wrote an answer naming
+      // a control and left "target" empty. That is a PROMPT failure, not a
+      // pointing failure, and it is invisible without this line.
+      console.warn('[point] the reply set no target; nothing to point at');
+      return this.clearArrow();
+    }
+    console.log(`[point] locating: ${JSON.stringify(target)}`);
 
     // Everything below this line is asynchronous and slow — a capture plus a
     // vision call, seconds of it. During that the user can hit the panic
@@ -317,19 +349,31 @@ class TurnController {
         buffer = shot.buffer;
       }
 
+      const startedAt = Date.now();
       const found = await this.llm.locate({ screenshot: buffer, target });
       if (stale()) return;
-      if (!found || found.found === false) return this.clearArrow();
+      console.log(`[point] locate took ${Date.now() - startedAt}ms`);
+      if (!found) { console.warn('[point] locate returned nothing parseable'); return this.clearArrow(); }
+      if (found.found === false) {
+        console.warn(`[point] locator could not find it: ${found.reason || 'no reason given'}`);
+        return this.clearArrow();
+      }
 
       const box = parseBox(found);
       // The sanity check is the guard against a model that ignored the 0-1000
       // convention and returned raw pixels — which would map the arrow several
       // screens to the right rather than erroring.
-      if (!isBoxSane(box)) return this.clearArrow();
+      if (!isBoxSane(box)) {
+        console.warn(`[point] box failed the sanity check: ${JSON.stringify(found)}`);
+        return this.clearArrow();
+      }
 
       // Pointing can also have been switched off in Settings while the locate
       // was in flight. That does not bump the epoch, so it is checked directly.
-      if (!this.store.getSettings().pointing) return;
+      if (!this.store.getSettings().pointing) {
+        console.warn('[point] pointing was switched off while the locate was in flight');
+        return;
+      }
 
       const rect = boxToScreenRect(box, display);
 
