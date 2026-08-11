@@ -202,14 +202,20 @@ function checkTrayArt() {
 /**
  * Windows 11 Smart App Control.
  *
- * Enforced, it refuses to start unsigned binaries with no reputation — and a
- * binary the build wrote a minute ago has none. This is NOT SmartScreen: there
- * is no "More info → Run anyway" for it, so a user who has it on and downloads
- * the portable build can be stopped with no way through.
+ * Enforced, it refuses to start unsigned binaries with no reputation. This is
+ * NOT SmartScreen: there is no "More info → Run anyway", so a user who has it
+ * on can be stopped with no way through at all.
  *
- * Observed on the author's machine: it blocks `dist\\win-unpacked\\Handrail.exe`
- * while allowing the NSIS installer built from the same output, so it hits
- * local verification harder than it hits real users.
+ * Which binary it blocks is NOT predictable. Observed on the author's machine,
+ * all in one session:
+ *   - the DOWNLOADED published `Handrail-Setup-0.1.6.exe`  BLOCKED
+ *   - the DOWNLOADED published `Handrail.0.1.6.exe` portable  allowed
+ *   - a locally built NSIS installer  allowed
+ *   - a locally built `dist\\win-unpacked\\Handrail.exe`  BLOCKED
+ *
+ * It is not Mark-of-the-Web — none of those files carried one, and
+ * `Unblock-File` changed nothing. So do not tell users "use the installer" or
+ * "use the portable": either can be refused. Signing is the only real answer.
  */
 function checkAppControl() {
   const state = ps(
@@ -218,11 +224,13 @@ function checkAppControl() {
   );
   if (state === '1') {
     note('warn', 'Smart App Control is enforced on this machine',
-      'It will block a freshly built, unsigned Handrail.exe, so `npm run verify:win`\n'
-      + 'cannot launch a local build here. The NSIS installer is still allowed.\n'
-      + 'CI has no such policy and verifies every release.',
-      'nothing to fix for shipping; turn it off in Windows Security → App & browser '
-      + 'control only if you need to launch local builds');
+      'It can refuse to start any unsigned Handrail build, with no "Run anyway".\n'
+      + 'Which one it blocks is not predictable — the downloaded installer and a\n'
+      + 'locally built unpacked exe were both refused here while the downloaded\n'
+      + 'portable ran. `npm run verify:win` may therefore be unable to launch a\n'
+      + 'local build. CI has no such policy and verifies every release there.',
+      'the only real fix is code signing; turning SAC off is a one-way change '
+      + 'in Windows Security → App & browser control');
   } else if (state === '2') {
     note('warn', 'Smart App Control is in evaluation mode', 'It may start blocking unsigned builds.');
   } else {

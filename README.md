@@ -58,12 +58,15 @@ Handrail is unsigned, so SmartScreen warns on first run: **More info** →
 **Run anyway**.
 
 If you have **Smart App Control** turned on (Windows 11 only), it can refuse to
-start the app outright — and unlike SmartScreen it offers no way through. Use
-the **installer** rather than the portable build; the installer is accepted
-where the portable one may not be. To check whether it is on: Windows Security
-→ **App & browser control** → **Smart App Control**. Code signing is what
-actually fixes this, and it costs a few hundred pounds a year, so it is not in
-place for a free project.
+start Handrail outright — and unlike SmartScreen there is no "Run anyway" to
+click. It blocked the installer on the machine this was tested on while letting
+the portable build run, so **if one is refused, try the other** — but neither is
+guaranteed. To check whether it is on: Windows Security → **App & browser
+control** → **Smart App Control**.
+
+Turning it off is a one-way change: Windows will not let you switch it back on
+without reinstalling. The only proper fix is code signing, which is a paid
+certificate this project does not have.
 
 Handrail stays out of the taskbar and lives in the **system tray** instead.
 Windows hides new tray icons in the overflow flyout, so click the **^** arrow
