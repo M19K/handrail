@@ -25,6 +25,13 @@ instruction precisely but cannot diagnose why step 4 failed.
   about your situation rather than about the software in general.
 - **Points at things.** An arrow appears on screen, at the actual control you
   need. Not "the button in the top right" — *that* button.
+
+  **Pointing needs a model that will name what it is pointing at.** The default,
+  `google/gemini-3.5-flash`, does this reliably and is what the arrow is tested
+  against. Some other models answer well but never name a target, so the answer
+  arrives and no arrow is drawn — Claude Sonnet behaves this way today. If the
+  arrow stops appearing, check which model is selected in Settings before
+  assuming anything is broken.
 - **Keeps up with you.** For multi-step tasks it watches for each step being
   done and moves on by itself. You are not expected to tick anything off.
 - **Tells you when you have gone wrong.** The most useful thing it does, and
