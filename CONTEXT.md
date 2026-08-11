@@ -4,42 +4,71 @@
 > or agent picking up this project should be able to continue from here without
 > re-deriving anything. Update it when a decision is made, not at the end.
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 ---
 
-## ⏭ WHERE THIS STANDS RIGHT NOW (2026-08-10)
+## ⏭ WHERE THIS STANDS RIGHT NOW (2026-08-11)
 
-Branch **`fix/macos-parity`**, pushed, **PR [#4](https://github.com/M19K/handrail/pull/4) open**. Working tree clean. VERSION is
-`0.1.4`; the latest *published* release is still `v0.1.3`.
+**`main` is clean. `v0.1.6` is tagged, built by CI and PUBLISHED, with all four
+installers — both `.dmg` files and both Windows `.exe` files.** Nothing is
+waiting to be merged or released.
 
-**Verified green on this Mac (M4 mini, macOS 26.5.2, 1920x1080 @ 1x):**
+https://github.com/M19K/handrail/releases/tag/v0.1.6
 
-- 117 unit tests · 63 smoke checks · 29 Playwright `_electron` tests
-- `npm run verify:mac` — the packaged app installs, launches, draws a window
-- `npm run doctor` — catches duplicate bundles, stale TCC records, temp-dir litter
-- eslint clean; typecheck down from 63 errors to 12, of which 3 are in `src/`
-  and the rest are Electron typings gaps in build scripts
-- The arrow was confirmed landing on a real control on real hardware
+### The Windows pass (2026-08-10)
 
-**What is NOT done, in order:**
+Windows had never had its shipped artifact opened by anyone. Downloading
+`Handrail.0.1.5.exe` from the release and running it found two defects that had
+been in **every release since 0.1.0**, while 132 unit tests, all smoke checks
+and 29 Playwright tests were green:
 
-1. **Merge PR #4** and publish **v0.1.4** with both `.dmg` files. Nothing else
-   blocks it.
-2. The last 12 type errors — script-level, cosmetic, not shipping defects.
-3. **Never verified on this hardware:** Retina (2x) arrow geometry, multi-monitor
-   with mixed scale factors, and the Intel x64 build. This machine is a single
-   1x display, so those three remain theoretical exactly as they were before.
-4. Signing + notarisation ($99/yr) is still the only thing that removes the
-   Gatekeeper dance and the re-grant-after-every-update problem. See `PLATFORM.md`.
+- **No tray icon.** `build.files` ships `assets/**`, and `assets/` held only the
+  macOS template artwork; `build/` and `icon.ico` are not shipped either, so all
+  three candidates in `main.js` missed. The overlay sets `skipTaskbar`, so once
+  hidden there was no way to reach Quit. It hid for six releases because
+  `scripts/package-win.js` copies that artwork by hand — every developer build
+  had a tray and only the released one did not.
+- **No panic key.** Windows reserves `Ctrl+Shift+Escape` for Task Manager and
+  `globalShortcut.register` returns false. The return value was ignored. Now
+  `Ctrl+Alt+H`, and a failed registration is an error-level log line.
 
-**The one trap to carry forward:** every rebuild changes the ad-hoc signature,
-and macOS binds both the Screen Recording grant and the keychain item to that
-signature. Reinstalling silently voids both, and the Settings toggle keeps
-showing "on" while it is not in effect. `npm run doctor` reports this; the fix is
-`tccutil reset ScreenCapture com.handrail.app`, then let the app re-prompt.
+Both fixed in 0.1.6 and confirmed against the **published** artifact.
 
----
+### Verified green, on Windows 11 Home 26200
+
+- 132 unit tests · all smoke checks · 29 Playwright `_electron` tests
+- `npm run verify:win` — new; launches the packaged `.exe` and reads its own log
+- `npm run doctor` — now dispatches by platform; it was hard-wired to macOS and
+  exited 0 on Windows, so it had never checked anything here
+- eslint clean
+- The published v0.1.6 build logs `tray created from ...assets/tray-32.png` and
+  `shortcuts: Control+Shift+H toggles, Control+Alt+H hides`
+
+### Known and unfixed
+
+1. **`npm run check` fails.** `tsc` reports 12 errors, identical on a clean
+   checkout of `main` — script-level Electron typing gaps, not shipping defects.
+   Pre-dates the Windows work.
+2. **Windows 11 Smart App Control** refuses to launch an unsigned freshly built
+   `Handrail.exe` outright, with no override — unlike SmartScreen. It allows the
+   NSIS installer and the downloaded release portable. `verify:win` warns rather
+   than failing when it hits this locally; CI has no such policy and is the
+   authority. Only code signing fixes it properly.
+3. **The Windows tray icon has never been photographed** — confirmed from the
+   app's own log and from a negative test that deliberately removes the artwork.
+   A fullscreen app covered the taskbar during testing, and the machine's mixed
+   DPI defeated every scripted capture of the tray region.
+4. **Never verified on any hardware:** Retina (2x) arrow geometry and
+   multi-monitor with mixed scale factors, on either platform.
+
+### The rule that produced all of this
+
+Three green suites and an unusable artifact co-existed for four releases on
+macOS and six on Windows, because **every suite runs the repo and none of them
+run the installer.** Both platforms now launch their packaged artifact in CI and
+fail the release if it cannot start. Do not remove those two steps.
+
 
 ## ⏭ SESSION HANDOFF (2026-08-09, macOS pass)
 
@@ -105,19 +134,18 @@ report and no output at all.
 - shortcut: `%USERPROFILE%\Desktop\Handrail.lnk`
 - rebuild + reinstall: `node scripts/package-win.js --install`
 
-34 commits, pushed. `7909792` is pristine upstream and is the first commit on
-GitHub, so `git diff 7909792..HEAD` is the portfolio artifact: **93 files,
-+13,146 / −21,781** — it removes more than it adds, which is the point.
+`7909792` is pristine upstream and is the first commit on GitHub, so
+`git diff 7909792..HEAD` is the portfolio artifact.
 
 - repo: **https://github.com/M19K/handrail** — public, no fork relationship
-- version: **0.1.3**, in `VERSION`, `package.json` and `CHANGELOG.md`
-- PRs [#1](https://github.com/M19K/handrail/pull/1), [#2](https://github.com/M19K/handrail/pull/2)
-  and [#3](https://github.com/M19K/handrail/pull/3) — all merged
-- releases: **v0.1.0 through v0.1.3 are all DRAFTS**, none published. Four
-  assets each: Windows setup + portable `.exe`, macOS x64 + arm64 `.dmg`
-- **Publish v0.1.3 and discard the rest.** v0.1.2 and earlier ship the lite
-  model, which invents menu paths for software that is not on screen
-- publishing is a deliberate human step — read the notes, then press it
+- version: **0.1.6**, in `VERSION`, `package.json` and `CHANGELOG.md`
+- **v0.1.6 is published and is the latest release**, with all four assets:
+  Windows setup + portable `.exe`, macOS x64 + arm64 `.dmg`
+- v0.1.0 through v0.1.2 were drafts and have been discarded; v0.1.3 to v0.1.5
+  are published but superseded. **Anything below 0.1.6 has the Windows tray and
+  panic-key defects**, and anything below 0.1.3 also ships the lite model that
+  invents menu paths for software that is not on screen
+- see the handoff block at the top of this file for what is current
 
 
 ### Built since the last handoff
