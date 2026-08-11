@@ -359,10 +359,33 @@ class Llm {
    */
   async locate({ screenshot, target, signal }) {
     const res = await this._client().models.generateContent(
+      // 300 tokens used to be plenty: the reply is four numbers. It stopped
+      // being plenty the moment the default model became a REASONING model,
+      // because thinking tokens are charged against the same `max_tokens`
+      // budget as the visible answer. The locator burned the whole 300 on
+      // reasoning and returned empty text, so `parseJson` got null and the
+      // arrow silently never drew — after a real 4-second call, with the
+      // target correctly identified. Every other call site already asked for
+      // 3000; this one alone was sized for a pre-reasoning model.
+      //
+      // Generous on purpose. A bounding box is a handful of tokens, so a high
+      // ceiling costs nothing when the model is brief and is the difference
+      // between working and not when it thinks first.
       this._req(LOCATE_SYSTEM, [imagePart(screenshot), { text: `Find: ${target}` }],
         { temperature: 0, maxOutputTokens: 2000, signal })
     );
-    return parseJson(res.text);
+
+    const parsed = parseJson(res.text);
+    if (!parsed) {
+      // Never fail silently here again. This is the last stage before the
+      // arrow, and an unparseable reply is indistinguishable from "not found"
+      // without seeing what actually came back.
+      const raw = String(res.text || '');
+      console.warn(
+        `[locate] no JSON in the reply (${raw.length} chars): ${JSON.stringify(raw.slice(0, 200))}`,
+      );
+    }
+    return parsed;
   }
 
   /**

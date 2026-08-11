@@ -227,3 +227,46 @@ test('scenario: the model returns an empty reply', async () => {
   assert.equal(result.kind, 'answer');
   assert.equal(result.markdown, '');
 });
+
+// --- Scenario 5 -------------------------------------------------------------
+//
+// THE LOCATOR'S TOKEN BUDGET.
+//
+// `locate` asked for 300 output tokens because its reply is four numbers. That
+// held until the default model became a reasoning model, which charges its
+// thinking against the same budget: the locator spent all 300 reasoning,
+// returned empty text, and the arrow silently never drew — after a real
+// four-second call, with the target correctly identified. Every other call site
+// asked for 3000. This one was sized for a model generation that no longer
+// exists.
+
+test('scenario: the locator asks for enough tokens to survive a thinking model', async () => {
+  const sent = [];
+  const llm = new Llm(
+    () => 'sk-or-v1-test',
+    () => 'test/model',
+    () => ({
+      models: {
+        generateContent: async (req) => { sent.push(req); return { text: '{"box_2d":[10,20,30,40]}' }; },
+      },
+    }),
+  );
+
+  await llm.locate({ screenshot: PNG, target: 'Night Shift button' });
+
+  const cap = sent[0].config.maxOutputTokens;
+  assert.ok(
+    cap >= 1000,
+    `the locator asked for only ${cap} output tokens — a reasoning model spends its `
+    + 'budget thinking and returns empty text, which reads as "control not found"',
+  );
+});
+
+test('scenario: an empty locator reply does not crash, it reports nothing found', async () => {
+  const llm = new Llm(
+    () => 'sk-or-v1-test',
+    () => 'test/model',
+    () => ({ models: { generateContent: async () => ({ text: '' }) } }),
+  );
+  assert.equal(await llm.locate({ screenshot: PNG, target: 'anything' }), null);
+});

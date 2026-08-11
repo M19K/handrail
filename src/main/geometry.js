@@ -54,19 +54,65 @@ const ASPECT_TOLERANCE = 0.01;
  *
  * Returns null if the input cannot be read as a box.
  */
+/**
+ * Rescale a 0–1 box into the 0–1000 space.
+ *
+ * The prompt says "not 0-1 floats" and models return them anyway. This is the
+ * one rescale that can be done without guessing: a genuine 0–1000 box whose
+ * four edges are all ≤ 1 would be a single pixel in the top-left corner, which
+ * is never a real control. Percentages are deliberately NOT handled — 0–100 is
+ * indistinguishable from a real box in the top tenth of the screen, and a wrong
+ * arrow is worse than no arrow.
+ */
+function rescaleUnitBox(box) {
+  const edges = [box.ymin, box.xmin, box.ymax, box.xmax];
+  if (!edges.every((v) => Number.isFinite(v) && v >= 0 && v <= 1)) return box;
+  if (edges.every((v) => v === 0)) return box;
+  return {
+    ymin: box.ymin * NORM_MAX,
+    xmin: box.xmin * NORM_MAX,
+    ymax: box.ymax * NORM_MAX,
+    xmax: box.xmax * NORM_MAX,
+  };
+}
+
 function parseBox(raw) {
   if (!raw) return null;
 
-  // [ymin, xmin, ymax, xmax] — the requested form.
-  const arr = Array.isArray(raw) ? raw : raw.box_2d || raw.bbox || raw.box;
-  if (Array.isArray(arr) && arr.length === 4 && arr.every(Number.isFinite)) {
-    const [ymin, xmin, ymax, xmax] = arr;
-    return {
+  // {left, top, right, bottom} and {x0, y0, x1, y1} — two shapes that other
+  // model families return in place of the requested array. Handled here rather
+  // than in the prompt because widening the parser costs nothing and cannot
+  // regress, whereas adding another line to the prompt competes for the
+  // model's attention with everything else already in it.
+  const named = raw && Number.isFinite(raw.left) && Number.isFinite(raw.top)
+    && Number.isFinite(raw.right) && Number.isFinite(raw.bottom)
+    ? [raw.top, raw.left, raw.bottom, raw.right]
+    : raw && Number.isFinite(raw.x0) && Number.isFinite(raw.y0)
+      && Number.isFinite(raw.x1) && Number.isFinite(raw.y1)
+      ? [raw.y0, raw.x0, raw.y1, raw.x1]
+      : null;
+  if (named) {
+    const [ymin, xmin, ymax, xmax] = named;
+    return rescaleUnitBox({
       ymin: Math.min(ymin, ymax),
       xmin: Math.min(xmin, xmax),
       ymax: Math.max(ymin, ymax),
       xmax: Math.max(xmin, xmax),
-    };
+    });
+  }
+
+  // [ymin, xmin, ymax, xmax] — the requested form.
+  const arr = Array.isArray(raw)
+    ? raw
+    : raw.box_2d || raw.bbox || raw.box || raw.rect || raw.bounds;
+  if (Array.isArray(arr) && arr.length === 4 && arr.every(Number.isFinite)) {
+    const [ymin, xmin, ymax, xmax] = arr;
+    return rescaleUnitBox({
+      ymin: Math.min(ymin, ymax),
+      xmin: Math.min(xmin, xmax),
+      ymax: Math.max(ymin, ymax),
+      xmax: Math.max(xmin, xmax),
+    });
   }
 
   // {x, y, width, height} — top-left plus extent.
@@ -74,12 +120,12 @@ function parseBox(raw) {
     raw && Number.isFinite(raw.x) && Number.isFinite(raw.y) &&
     Number.isFinite(raw.width) && Number.isFinite(raw.height)
   ) {
-    return {
+    return rescaleUnitBox({
       ymin: raw.y,
       xmin: raw.x,
       ymax: raw.y + raw.height,
       xmax: raw.x + raw.width,
-    };
+    });
   }
 
   // A bare point — give it a small nominal extent so downstream code has a box.

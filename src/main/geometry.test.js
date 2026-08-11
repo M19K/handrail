@@ -253,3 +253,49 @@ test('arrowLayout handles a scaled display the same as an unscaled one', () => {
   assert.ok(region.width < small.width * 0.6, 'region too wide for a smaller display');
   assert.ok(region.height < small.height * 0.6, 'region too tall for a smaller display');
 });
+
+/**
+ * Coordinate conventions other model families actually return.
+ *
+ * The arrow stopped working when the model changed, and the investigation
+ * showed how much of the pipeline had quietly been shaped around ONE model's
+ * habits. The prompt asks for a 0-1000 array; the parser should not be the
+ * thing that decides whether a different model can drive the arrow.
+ *
+ * Percentages are deliberately absent. 0-100 cannot be told apart from a real
+ * box in the top tenth of the screen, and pointing at the wrong control is
+ * worse than not pointing at all.
+ */
+
+test('0-1 floats are rescaled instead of collapsing into the corner', () => {
+  const box = parseBox({ box_2d: [0.25, 0.5, 0.35, 0.6] });
+  assert.deepEqual(box, { ymin: 250, xmin: 500, ymax: 350, xmax: 600 });
+});
+
+test('a 0-1000 box in the top-left is NOT mistaken for 0-1 floats', () => {
+  const box = parseBox({ box_2d: [2, 3, 40, 50] });
+  assert.deepEqual(box, { ymin: 2, xmin: 3, ymax: 40, xmax: 50 });
+});
+
+test('{left, top, right, bottom} is understood', () => {
+  assert.deepEqual(
+    parseBox({ left: 100, top: 200, right: 300, bottom: 400 }),
+    { ymin: 200, xmin: 100, ymax: 400, xmax: 300 },
+  );
+});
+
+test('{x0, y0, x1, y1} is understood', () => {
+  assert.deepEqual(
+    parseBox({ x0: 10, y0: 20, x1: 30, y1: 40 }),
+    { ymin: 20, xmin: 10, ymax: 40, xmax: 30 },
+  );
+});
+
+test('rect and bounds are accepted alongside box_2d and bbox', () => {
+  assert.deepEqual(parseBox({ rect: [1, 2, 3, 4] }), { ymin: 1, xmin: 2, ymax: 3, xmax: 4 });
+  assert.deepEqual(parseBox({ bounds: [1, 2, 3, 4] }), { ymin: 1, xmin: 2, ymax: 3, xmax: 4 });
+});
+
+test('an all-zero box is left alone rather than rescaled', () => {
+  assert.deepEqual(parseBox({ box_2d: [0, 0, 0, 0] }), { ymin: 0, xmin: 0, ymax: 0, xmax: 0 });
+});
