@@ -19,6 +19,11 @@ the real button, on your real screen.
 **It is built for people who are not technical.** Someone who can follow an
 instruction precisely but cannot diagnose why step 4 failed.
 
+<img src="design/screenshots/overlay-answer.png" alt="Handrail answering a question about the Displays panel open behind it" width="100%">
+
+<sub>Ask in the app you are already in. The answer names the control that is on
+your screen right now — not the one in a tutorial.</sub>
+
 ## What it does
 
 - **Sees your screen.** Every question includes a screenshot, so answers are
@@ -33,6 +38,11 @@ instruction precisely but cannot diagnose why step 4 failed.
 Built for operating complex software — Premiere Pro, After Effects, Unreal
 Engine, Excel — and equally happy explaining an error dialog or getting a
 terminal command right.
+
+<img src="design/screenshots/overlay-thread.png" alt="A follow-up question in the same thread, answered against the same screen" width="100%">
+
+<sub>Follow-ups stay in the thread and keep the same screen context, so "where
+is it?" does not start the conversation over.</sub>
 
 ## Privacy
 
