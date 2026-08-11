@@ -336,11 +336,31 @@ class Llm {
    *
    * Normalised 0–1000 coordinates, never pixels — see src/main/geometry.js
    * for why that makes the whole DPI and multi-monitor problem disappear.
+   *
+   * The cap was 300, and that silently killed the arrow — the one thing this
+   * product does that nothing else does.
+   *
+   * The reply itself is about 40 tokens. But a reasoning model spends the
+   * budget THINKING before it emits anything, and working out where a control
+   * sits in a 2880x1800 screenshot is exactly the kind of question it thinks
+   * hard about. The budget ran out mid-answer and the text came back as
+   *
+   *     {"found":true,"label":"speaker icon","box_
+   *
+   * which `parseJson` correctly refuses, so `locate()` returned null and
+   * `_pointAtTarget` treated it as "not found" and drew nothing. No error, no
+   * log line, no arrow — the failure looked exactly like the model being unable
+   * to find the control. Measured on google/gemini-3.5-flash: truncated at 300,
+   * complete and correct at 2000.
+   *
+   * Raising the ceiling does not raise the cost. The model generates those
+   * reasoning tokens either way and they are billed either way; all the low cap
+   * bought was paying for them and throwing the answer away.
    */
   async locate({ screenshot, target, signal }) {
     const res = await this._client().models.generateContent(
       this._req(LOCATE_SYSTEM, [imagePart(screenshot), { text: `Find: ${target}` }],
-        { temperature: 0, maxOutputTokens: 300, signal })
+        { temperature: 0, maxOutputTokens: 2000, signal })
     );
     return parseJson(res.text);
   }
@@ -368,6 +388,20 @@ class Llm {
    * Deliberately the cheapest call in the product: a downscaled frame and one
    * yes/no against a criterion written at plan time. It runs far more often
    * than anything else, so its cost sets whether watching is viable at all.
+   *
+   * The 200-token cap stays, and `llm.respond.test.js` enforces it.
+   *
+   * `locate` was raised to 2000 because a reasoning model truncated it
+   * mid-JSON, and the same failure is theoretically possible here. It was
+   * measured rather than assumed: on google/gemini-3.5-flash the verdict comes
+   * back complete and correct at 200, because "is this step done" is a far
+   * smaller question than "where is this control in a 2880x1800 screenshot".
+   *
+   * This call runs constantly while a task is being watched, so its cost is
+   * what decides whether watching is affordable at all. It is not raised on
+   * suspicion. If a heavier model ever does truncate here the symptom is
+   * visible rather than silent — three unreadable verdicts stop the watch and
+   * the checklist says so.
    */
   async checkStep({ screenshot, stepText, doneWhen, signal }) {
     const res = await this._client().models.generateContent(
