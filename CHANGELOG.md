@@ -7,6 +7,38 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.7] — 2026-08-10
+
+**The arrow was not working.** On the default model it had stopped being drawn
+at all, and nothing said so — not an error, not a log line, not a test.
+
+### Fixed
+
+- **The arrow is back.** When Handrail asked the AI *where* a control was on
+  screen, it gave it a budget too small to answer in. Newer models think before
+  they reply, and the thinking used up the whole budget, so the answer arrived
+  cut in half and unreadable. Handrail treated that as "I couldn't find it" and
+  quietly drew nothing. Pointing at things on your screen is the entire point of
+  this product, so this was as bad as it gets.
+- It failed silently, which is why it survived: every test passed, no error was
+  shown, and it looked exactly like the AI being unable to find the thing.
+
+### Verified
+
+For the first time, the whole chain was tested for real on Windows: a genuine
+question, a real screenshot of the desktop, a real answer from the AI, and the
+arrow drawn on screen landing on the actual control it named — photographed, on
+a high-resolution display. Every earlier claim that the arrow worked was based
+on made-up coordinates in a test, never a real one.
+
+### Known
+
+- Step-watching still uses a small budget on purpose. It was measured and works,
+  and it is the part that runs constantly, so making it bigger would make
+  watching more expensive for no gain.
+
+---
+
 ## [0.1.6] — 2026-08-10
 
 **The Windows build had no tray icon, and never had a working panic key.** Both
