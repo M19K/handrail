@@ -6,6 +6,12 @@
 
 **A desktop overlay that sees your screen and walks you through complex software, step by step.**
 
+<br>
+
+<img src="docs/screenshots/pointing.png" width="900" alt="Handrail answering &quot;where do I change my screen resolution?&quot; over Windows Settings, with a mint arrow drawn on the actual Display resolution dropdown">
+
+<sub>A real question, a real screen, a real arrow. Not a mockup — this is the shipped build.</sub>
+
 </div>
 
 ---
