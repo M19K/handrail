@@ -79,7 +79,7 @@ function convertParts(parts) {
 }
 
 /** Full Gemini request -> OpenAI chat-completions body. */
-function geminiToOpenAI(request, modelName, stream) {
+function geminiToOpenAI(request, modelName, stream, web) {
   const messages = [];
 
   const sys = request.systemInstruction;
@@ -106,6 +106,12 @@ function geminiToOpenAI(request, modelName, stream) {
     messages,
     stream: !!stream,
   };
+
+  // OpenRouter's web plugin. Preferred over the `:online` model suffix because
+  // it is configurable and leaves the model id intact — the id is also what the
+  // key-ownership and model-comparison paths read, and rewriting it there would
+  // make a web-enabled turn look like a different model entirely.
+  if (web) body.plugins = [{ id: 'web', max_results: 3 }];
 
   if (typeof gen.temperature === 'number') body.temperature = gen.temperature;
   if (typeof gen.topP === 'number') body.top_p = gen.topP;
@@ -189,19 +195,82 @@ async function raiseHttpError(res) {
   throw new Error(`OpenRouter request failed (${res.status}): ${detail}`);
 }
 
+/** Status codes worth trying again. Everything else is the caller's fault. */
+const RETRYABLE = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+/** Attempts, including the first. Three total, so two retries. */
+const MAX_ATTEMPTS = 3;
+
+/**
+ * How long to wait before attempt `n`, honouring Retry-After when given.
+ *
+ * Exported for tests: the delays are the whole behaviour, and a retry ladder
+ * that silently waits the wrong amount is indistinguishable from one that
+ * works until a demo.
+ */
+function retryDelayMs(attempt, retryAfterHeader) {
+  const stated = Number(retryAfterHeader);
+  // Cap a hostile or absurd Retry-After — a provider asking for five minutes
+  // mid-demo is not something to obey silently.
+  if (Number.isFinite(stated) && stated > 0) return Math.min(stated * 1000, 8000);
+  return Math.min(500 * 2 ** (attempt - 1), 4000);   // 500ms, 1s, 2s…
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * POST with retries.
+ *
+ * WHY THIS EXISTS: there was no retry at all. A single 429 or a one-off 503
+ * went straight to the user as a red "Try again" button, and during a live
+ * demo on 2026-08-10 that happened three or four times in a row. Every one of
+ * those was a transient provider hiccup that a 500ms wait would have absorbed.
+ *
+ * Deliberately narrow: only idempotent transport failures and the status codes
+ * above are retried. A 401 is not a hiccup and retrying it just makes the user
+ * wait longer for the same answer. An aborted request is never retried —
+ * Escape means stop, and retrying it would resurrect a call the user killed.
+ */
+async function postWithRetry(url, init, signal) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return res;
+
+      const wait = retryDelayMs(attempt, res.headers && res.headers.get('retry-after'));
+      console.warn(`[openrouter] ${res.status} — retrying in ${wait}ms (attempt ${attempt}/${MAX_ATTEMPTS})`);
+      await sleep(wait);
+    } catch (err) {
+      // The user pressed Escape. Not a failure to paper over.
+      if (err && (err.name === 'AbortError' || (signal && signal.aborted))) throw err;
+      if (attempt === MAX_ATTEMPTS) throw err;
+
+      lastError = err;
+      const wait = retryDelayMs(attempt);
+      console.warn(`[openrouter] ${err.message} — retrying in ${wait}ms (attempt ${attempt}/${MAX_ATTEMPTS})`);
+      await sleep(wait);
+    }
+  }
+
+  throw lastError;
+}
+
 class OpenRouterModels {
   constructor(apiKey) {
     this.apiKey = apiKey;
   }
 
-  async generateContent({ model, contents, config: genConfig, systemInstruction, signal }) {
+  async generateContent({ model, contents, config: genConfig, systemInstruction, signal, web }) {
     const body = geminiToOpenAI(
       { contents, generationConfig: genConfig, systemInstruction },
       model,
-      false
+      false,
+      web
     );
 
-    const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    const res = await postWithRetry(`${OPENROUTER_BASE}/chat/completions`, {
       method: 'POST',
       headers: headers(this.apiKey),
       body: JSON.stringify(body),
@@ -209,7 +278,7 @@ class OpenRouterModels {
       // cancelled 3000-token vision call used to keep running and stay billed;
       // only the reply was thrown away.
       signal,
-    });
+    }, signal);
 
     if (!res.ok) await raiseHttpError(res);
     return toGeminiResponse(await res.json());
@@ -290,4 +359,5 @@ class OpenRouterClient {
  * both live calls, so its attribution headers went out on every real request.
  * Corrected in 0.1.5.
  */
-module.exports = { OpenRouterClient };
+module.exports = {
+  retryDelayMs, OpenRouterClient };

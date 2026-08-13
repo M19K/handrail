@@ -14,7 +14,9 @@
  * preload bridges. Finding where a message was handled meant grepping.
  */
 
-const { app, ipcMain, shell, systemPreferences, desktopCapturer } = require('electron');
+const { app, ipcMain, shell, systemPreferences, desktopCapturer, dialog } = require('electron');
+const fs = require('fs');
+const path = require('path');
 const { providerOf } = require('./store');
 const { friendly } = require('./turn');
 
@@ -38,6 +40,77 @@ function register({ store, windows, turns, llm, onSetupComplete }) {
   // --- steps --------------------------------------------------------------
   handle('hr:step:complete', (taskId, index) => turns.completeStep(taskId, index));
   handle('hr:step:reopen', (taskId, index) => turns.reopenStep(taskId, index));
+
+  // --- attachments --------------------------------------------------------
+  //
+  // The file's BYTES never cross the bridge. main reads it, keeps it on the
+  // thread, and hands the renderer a name and a size to draw a chip with — the
+  // same rule screenshots follow, and for the same reason.
+
+  /** 5MB. Big enough for a document or a screenshot, small enough to send. */
+  const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+
+  const IMAGE_MIME = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif', '.webp': 'image/webp',
+  };
+
+  handle('hr:attach:add', async (threadId) => {
+    if (!threadId) throw new Error('Open a thread before attaching a file.');
+
+    const result = await dialog.showOpenDialog({
+      title: 'Attach to this thread',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Documents and images', extensions: [
+          'txt', 'md', 'markdown', 'json', 'csv', 'log', 'yml', 'yaml',
+          'png', 'jpg', 'jpeg', 'gif', 'webp',
+          'js', 'ts', 'py', 'sh', 'html', 'css', 'xml',
+        ] },
+        { name: 'All files', extensions: ['*'] },
+      ],
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+
+    const filePath = result.filePaths[0];
+    const stat = fs.statSync(filePath);
+    if (stat.size > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`That file is ${Math.round(stat.size / 1024 / 1024)}MB. The limit is 5MB.`);
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const name = path.basename(filePath);
+    const id = `a_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+    let attachment;
+    if (IMAGE_MIME[ext]) {
+      attachment = {
+        id, name, size: stat.size, kind: 'image', mimeType: IMAGE_MIME[ext],
+        data: fs.readFileSync(filePath).toString('base64'),
+      };
+    } else {
+      // Anything not a known image is read as text. A binary read this way
+      // arrives as mojibake rather than as a crash, and the model says it
+      // cannot read it — which beats refusing a file the user can plainly see
+      // is a document just because its extension is unusual.
+      const text = fs.readFileSync(filePath, 'utf8');
+      attachment = {
+        id, name, size: stat.size, kind: 'text', mimeType: 'text/plain',
+        // Truncated, because the whole thread is re-sent every turn.
+        text: text.slice(0, 200000),
+        truncated: text.length > 200000,
+      };
+    }
+
+    store.addAttachment(threadId, attachment);
+    return store.listAttachments(threadId);
+  });
+
+  handle('hr:attach:list', (threadId) => (threadId ? store.listAttachments(threadId) : []));
+  handle('hr:attach:remove', (threadId, id) => {
+    store.removeAttachment(threadId, id);
+    return store.listAttachments(threadId);
+  });
 
   // --- threads ------------------------------------------------------------
   handle('hr:threads:list', () => store.listThreads());

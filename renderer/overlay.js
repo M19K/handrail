@@ -55,6 +55,10 @@ const el = {
   captureFlash: $('capture-flash'),
   thinking: $('thinking'),
   toggleCapture: $('toggle-capture'),
+  toggleWeb: $('toggle-web'),
+  attach: $('attach'),
+  attachments: $('attachments'),
+  expandThread: $('expand-thread'),
   toggleThreads: $('toggle-threads'),
   toggleSettings: $('toggle-settings'),
   quit: $('quit'),
@@ -86,7 +90,8 @@ const state = {
   threads: [],
   threadFilter: '',
   openThreadId: null,
-  settings: { capture: true, pointing: true, stealth: true, keyHint: '' },
+  settings: { capture: true, pointing: true, stealth: true, web: false, keyHint: '' },
+  attachments: [],
   panel: null,            // 'threads' | 'settings' | null — one at a time
 };
 
@@ -110,6 +115,7 @@ function setView(view) {
   if (view === 'collapsed') setPanel(null);
 
   bridge.window.setState(view);
+  if (typeof syncExpandAffordance === 'function') syncExpandAffordance();
   if (view === 'bar' || view === 'answer') el.input.focus();
   scheduleResize();
 }
@@ -195,6 +201,50 @@ function addUserMessage(text) {
   return appendMessage({ role: 'user', kind: 'text', node, text });
 }
 
+/**
+ * Copy this reply to the clipboard.
+ *
+ * Built with createElement and textContent like everything else in the
+ * transcript — see CLAUDE.md: model output never reaches innerHTML, and that
+ * rule does not get an exception for a button label.
+ *
+ * The button copies the reply's PLAIN TEXT, not the rendered markup. Someone
+ * pasting a Handrail answer into a terminal or a message wants the words and the
+ * command, not a fragment of the overlay's DOM.
+ */
+function addCopyButton(message) {
+  const actions = document.createElement('div');
+  actions.className = 'msg__actions';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'copy-btn';
+  btn.setAttribute('aria-label', 'Copy this reply');
+  btn.title = 'Copy';
+  btn.textContent = 'Copy';
+
+  btn.addEventListener('click', async () => {
+    const text = (message.text || message.content.textContent || '').trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'Copied';
+      btn.classList.add('copy-btn--done');
+    } catch (_) {
+      // A clipboard that refuses is worth saying out loud rather than looking
+      // like a button that does nothing.
+      btn.textContent = 'Press Cmd+C';
+    }
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copy-btn--done');
+    }, 1600);
+  });
+
+  actions.append(btn);
+  return actions;
+}
+
 /** The assistant's slot for this turn, created empty and filled as events land. */
 function addAssistantMessage() {
   const node = document.createElement('div');
@@ -204,7 +254,17 @@ function addAssistantMessage() {
   content.className = 'msg__content';
   node.append(content);
 
-  return appendMessage({ role: 'assistant', kind: null, node, content, text: '' });
+  const message = { role: 'assistant', kind: null, node, content, text: '' };
+
+  // Appended once, after the content, so it sits under the reply. Hidden until
+  // there is something worth copying — an empty slot with a Copy button under
+  // it is a control that lies.
+  const actions = addCopyButton(message);
+  actions.hidden = true;
+  node.append(actions);
+  message.actions = actions;
+
+  return appendMessage(message);
 }
 
 /** The assistant message currently being written into, if any. */
@@ -262,6 +322,7 @@ async function ask(text) {
     await bridge.ask({
       text: prompt,
       capture: state.settings.capture,
+      web: state.settings.web,
       turnId,
       threadId: state.openThreadId,
     });
@@ -337,6 +398,7 @@ bridge.onTurn((event) => {
       msg.kind = 'text';
       msg.text = event.markdown;
       renderProse(msg.content, msg.text);
+      if (msg.actions) msg.actions.hidden = !String(msg.text || '').trim();
       followIfAtBottom(wasAtBottom);
       scheduleResize();
       break;
@@ -945,6 +1007,7 @@ function relativeTime(ts) {
 
 async function openThread(id) {
   state.openThreadId = id;
+  refreshAttachments();
   const thread = await bridge.threads.open(id);
   clearTranscript();
 
@@ -964,6 +1027,7 @@ async function openThread(id) {
       // were stored in full still have to open.
       msg.text = turn.markdown || turn.summary || '';
       renderProse(msg.content, msg.text);
+      if (msg.actions) msg.actions.hidden = !String(msg.text || '').trim();
     }
   }
 
@@ -985,6 +1049,7 @@ const SETTING_ROWS = [
   { key: 'capture',  label: 'Capture my screen',        note: 'Every question includes a screenshot' },
   { key: 'pointing', label: 'Point at things on screen', note: 'Draw an arrow at the control to use' },
   { key: 'stealth',  label: 'Hide from screen sharing',  note: "Handrail won't appear in calls or recordings" },
+  { key: 'web',      label: 'Look things up on the web',  note: 'Sends your question to a search provider. Off by default' },
 ];
 
 /**
@@ -1036,6 +1101,7 @@ function priceLabel(model) {
 async function refreshSettings() {
   state.settings = await bridge.settings.get();
   el.toggleCapture.setAttribute('aria-pressed', String(state.settings.capture));
+  el.toggleWeb.setAttribute('aria-pressed', String(!!state.settings.web));
   renderSettings();
 }
 
@@ -1187,17 +1253,43 @@ el.bar.addEventListener('submit', (e) => {
 
 el.pill.addEventListener('click', () => setView('bar'));
 
+/**
+ * Collapse the conversation WITHOUT losing it.
+ *
+ * The X used to cancel the turn, drop to the bar, and leave the only route back
+ * through the Threads panel — select the thread again, two clicks, to reopen
+ * something that had never actually closed. Collapsing is now a view change and
+ * nothing else: the thread stays open, the transcript stays in the DOM, and the
+ * chevron in the bar puts it straight back.
+ *
+ * An in-flight turn is still cancelled. Collapsing mid-answer means "stop", and
+ * leaving a request running against a panel the user just put away is how you
+ * get a bill for an answer nobody reads.
+ */
 el.panelClose.addEventListener('click', () => {
   if (state.turnId) bridge.cancel(state.turnId);
   endTurn();
   setView('bar');
+  syncExpandAffordance();
 });
+
+el.expandThread.addEventListener('click', () => {
+  setView('answer');
+  syncExpandAffordance();
+});
+
+/** The down chevron only exists when there is a collapsed transcript to restore. */
+function syncExpandAffordance() {
+  const hasTranscript = state.messages.length > 0;
+  el.expandThread.hidden = !(state.view === 'bar' && hasTranscript);
+}
 
 el.panelClear.addEventListener('click', async () => {
   if (state.turnId) bridge.cancel(state.turnId);
   endTurn();
   const { id } = await bridge.threads.create();
   state.openThreadId = id;
+  refreshAttachments();
   clearTranscript();
   el.panelTitle.textContent = 'Handrail';
   setView('bar');
@@ -1206,6 +1298,77 @@ el.panelClear.addEventListener('click', async () => {
 el.quit.addEventListener('click', () => bridge.window.quit());
 
 el.toggleCapture.addEventListener('click', () => updateSetting('capture', !state.settings.capture));
+el.toggleWeb.addEventListener('click', () => updateSetting('web', !state.settings.web));
+
+/**
+ * Attachment chips.
+ *
+ * Only names and sizes ever reach here — the bytes stay in main, like
+ * screenshots. Built with createElement and textContent because a filename is
+ * user-supplied text and this transcript's rule about innerHTML does not stop
+ * at model output.
+ */
+function renderAttachments() {
+  el.attachments.replaceChildren();
+  el.attachments.hidden = !state.attachments.length;
+
+  for (const att of state.attachments) {
+    const chip = document.createElement('span');
+    chip.className = 'chip-file';
+    chip.title = `${att.name} — ${Math.max(1, Math.round(att.size / 1024))} KB`;
+
+    const label = document.createElement('span');
+    // Long filenames would push the bar wider than the screen.
+    label.textContent = att.name.length > 22 ? `${att.name.slice(0, 20)}…` : att.name;
+    chip.append(label);
+
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'chip-file__x';
+    x.setAttribute('aria-label', `Remove ${att.name}`);
+    x.textContent = '×';
+    x.addEventListener('click', async () => {
+      state.attachments = await bridge.attachments.remove(state.openThreadId, att.id);
+      renderAttachments();
+    });
+    chip.append(x);
+
+    el.attachments.append(chip);
+  }
+}
+
+async function refreshAttachments() {
+  if (!state.openThreadId) {
+    state.attachments = [];
+    renderAttachments();
+    return;
+  }
+  try {
+    state.attachments = await bridge.attachments.list(state.openThreadId);
+  } catch (_) {
+    state.attachments = [];
+  }
+  renderAttachments();
+}
+
+el.attach.addEventListener('click', async () => {
+  // Attaching needs somewhere to attach TO. Creating the thread here rather
+  // than refusing means the paperclip works on a fresh overlay, which is
+  // exactly when someone reaches for it.
+  if (!state.openThreadId) {
+    const { id } = await bridge.threads.create();
+    state.openThreadId = id;
+  }
+  try {
+    const list = await bridge.attachments.add(state.openThreadId);
+    if (list) {
+      state.attachments = list;
+      renderAttachments();
+    }
+  } catch (err) {
+    showError((err && err.message) || 'Could not attach that file.', false);
+  }
+});
 el.toggleThreads.addEventListener('click', () => setPanel('threads'));
 el.toggleSettings.addEventListener('click', () => setPanel('settings'));
 
@@ -1216,6 +1379,7 @@ el.threadSearch.addEventListener('input', () => {
 el.threadNew.addEventListener('click', async () => {
   const { id } = await bridge.threads.create();
   state.openThreadId = id;
+  refreshAttachments();
   clearTranscript();
   await refreshThreads();
   setView('bar');

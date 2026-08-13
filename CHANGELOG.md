@@ -7,6 +7,59 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.9] — 2026-08-10
+
+Five features and the two faults reported from live use.
+
+### Fixed
+
+- **The overlay flickered for everyone watching a screen share.** With "Hide
+  from screen sharing" deliberately switched OFF, Handrail blinked out and back
+  on for a colleague on Google Meet, several times a minute, while the local
+  screen looked perfectly static.
+
+  Handrail hid itself from its own screenshot by turning macOS content
+  protection ON immediately before each capture and OFF immediately after.
+  Content protection is also exactly what removes a window from a screen share,
+  and it does not affect the local display — which is the whole signature of
+  what was seen. Self-exclusion now paints Handrail's own rectangles out of the
+  captured pixels instead. Nothing toggles, the user's stealth setting is the
+  only thing that touches content protection, and it works the same on both
+  platforms.
+
+- **"Try again" during a live demo, three or four times.** There was no retry
+  anywhere. A single 429 or a one-off 503 went straight to the user as a red
+  error. Requests now retry twice with backoff, honour `Retry-After` (capped, so
+  a provider cannot park a demo for five minutes), and never retry an abort —
+  Escape still means stop.
+
+### Added
+
+- **Attachments on a thread.** Attach a document or an image with the paperclip
+  and it stays available to every question in that thread, not just the next
+  one. The bytes never cross into the renderer, the same rule screenshots
+  follow. Five files per thread, 5MB each.
+- **Web search, off by default.** The globe in the bar lets a question be
+  answered from the web when the answer is not on screen. Off unless asked for,
+  because the README promises your screen and conversations stay on your
+  machine and a lookup sends the question to a search provider. Replies say
+  which part came from the web.
+- **Collapse and re-open a conversation in one click.** The X on the panel was a
+  chevron-shaped lie: it hid the transcript and the only way back was through
+  the Threads panel to re-select a thread that had never closed. Up collapses to
+  the bar, down brings the same thread straight back.
+- **A copy button under every reply.** Copies the plain text, not the markup.
+
+### Changed
+
+- **The answer is roughly ten times smaller on the wire.** The question pass now
+  captures at 1600px as JPEG rather than full native resolution as PNG — about
+  1MB down to about 100KB, and four times better again on a Retina display.
+  Locating a control still captures at native resolution in PNG, because that is
+  the pass where fine detail decides whether the arrow lands on a 16px icon.
+
+---
+
 ## [0.1.7] — 2026-08-10
 
 **The arrow was not working.** On the default model it had stopped being drawn

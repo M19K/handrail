@@ -69,7 +69,7 @@ function harness(overrides = {}) {
     getOverlay: () => null,
     emit: (e) => events.push(e),
     point: (p) => points.push(p),
-    excludeFromCapture: () => () => {},
+    selfWindowBounds: () => [],
   });
 
   return { turns, events, points, store, threads, appended };

@@ -270,3 +270,101 @@ test('scenario: an empty locator reply does not crash, it reports nothing found'
   );
   assert.equal(await llm.locate({ screenshot: PNG, target: 'anything' }), null);
 });
+
+// --- Scenario 6 -------------------------------------------------------------
+//
+// ATTACHMENTS. A file attached to the thread has to reach the model labelled by
+// name, so a reply can say WHICH file it is quoting, and the bytes must never
+// be mistaken for the screenshot.
+
+test('scenario: an attached text file reaches the model, named', async () => {
+  const sent = [];
+  const llm = new Llm(
+    () => 'sk-or-v1-test',
+    () => 'test/model',
+    () => ({
+      models: {
+        generateContent: async (req) => { sent.push(req); return { text: '{"kind":"answer","markdown":"ok"}' }; },
+      },
+    }),
+  );
+
+  await llm.respond({
+    prompt: 'what is the error in this log?',
+    screenshot: PNG,
+    attachments: [{ kind: 'text', name: 'build.log', text: 'FATAL: disk full' }],
+  });
+
+  const text = sent[0].contents[0].parts.map((p) => p.text || '').join('\n');
+  assert.ok(text.includes('build.log'), 'the model must know which file it is reading');
+  assert.ok(text.includes('FATAL: disk full'), 'the contents must actually be sent');
+});
+
+test('scenario: an attached image is sent as an image, not as text', async () => {
+  const sent = [];
+  const llm = new Llm(
+    () => 'sk-or-v1-test',
+    () => 'test/model',
+    () => ({
+      models: {
+        generateContent: async (req) => { sent.push(req); return { text: '{"kind":"answer","markdown":"ok"}' }; },
+      },
+    }),
+  );
+
+  await llm.respond({
+    prompt: 'what is this?',
+    screenshot: PNG,
+    screenshotMime: 'image/jpeg',
+    attachments: [{ kind: 'image', name: 'error.png', mimeType: 'image/png', data: 'AAAA' }],
+  });
+
+  const parts = sent[0].contents[0].parts;
+  const images = parts.filter((p) => p.inlineData);
+  assert.equal(images.length, 2, 'the screenshot AND the attachment');
+  assert.equal(images[0].inlineData.mimeType, 'image/jpeg', 'the screenshot keeps its real type');
+  assert.equal(images[1].inlineData.mimeType, 'image/png', 'the attachment keeps its own');
+});
+
+test('scenario: a truncated attachment says so rather than lying by omission', async () => {
+  const sent = [];
+  const llm = new Llm(
+    () => 'sk-or-v1-test', () => 'test/model',
+    () => ({ models: { generateContent: async (req) => { sent.push(req); return { text: '{}' }; } } }),
+  );
+  await llm.respond({
+    prompt: 'summarise',
+    attachments: [{ kind: 'text', name: 'huge.csv', text: 'a,b,c', truncated: true }],
+  });
+  const text = sent[0].contents[0].parts.map((p) => p.text || '').join('\n');
+  assert.ok(/truncated/i.test(text), 'the model must know it is not seeing the whole file');
+});
+
+// --- Scenario 7 -------------------------------------------------------------
+//
+// WEB SEARCH. Off unless asked for, and never on the two passes that are
+// questions about the screenshot rather than about the world.
+
+test('scenario: web search is off unless the turn asks for it', async () => {
+  const sent = [];
+  const llm = new Llm(
+    () => 'sk-or-v1-test', () => 'test/model',
+    () => ({ models: { generateContent: async (req) => { sent.push(req); return { text: '{}' }; } } }),
+  );
+
+  await llm.respond({ prompt: 'where is settings?', screenshot: PNG });
+  assert.ok(!sent[0].web, 'no web unless requested');
+
+  await llm.respond({ prompt: 'what changed in the latest release?', screenshot: PNG, web: true });
+  assert.equal(sent[1].web, true, 'requested, so passed through');
+});
+
+test('scenario: locating a control never searches the web', async () => {
+  const sent = [];
+  const llm = new Llm(
+    () => 'sk-or-v1-test', () => 'test/model',
+    () => ({ models: { generateContent: async (req) => { sent.push(req); return { text: '{"box_2d":[1,2,3,4]}' }; } } }),
+  );
+  await llm.locate({ screenshot: PNG, target: 'Night Shift button' });
+  assert.ok(!sent[0].web, 'where a button is on screen is not a question for a search engine');
+});
