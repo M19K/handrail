@@ -1,6 +1,6 @@
 {
   "name": "handrail",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "A desktop overlay that sees your screen and walks you through complex software, step by step.",
   "main": "main.js",
   "scripts": {

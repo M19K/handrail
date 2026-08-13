@@ -221,25 +221,24 @@ class Windows {
    *
    * Returns a function that restores the user's actual setting.
    */
-  excludeFromCapture() {
-    if (STEALTH_DEFAULT && this.store.getSettings().stealth !== false) {
-      return () => {};
-    }
-
-    const wins = [this.overlay, this.arrow].filter((w) => w && !w.isDestroyed());
-    this._excludeDepth = (this._excludeDepth || 0) + 1;
-    for (const win of wins) win.setContentProtection(true);
-
-    let restored = false;
-    return () => {
-      if (restored) return;
-      restored = true;
-      this._excludeDepth -= 1;
-      if (this._excludeDepth > 0) return;   // someone else is still capturing
-      for (const win of wins) {
-        if (!win.isDestroyed()) win.setContentProtection(false);
-      }
-    };
+  /**
+   * Where Handrail's own windows are, so a capture can blank them out.
+   *
+   * This REPLACES `excludeFromCapture()`, which turned content protection on
+   * before each capture and off after. Content protection is also what removes
+   * a window from a screen share, so on a Google Meet call with stealth
+   * switched off the overlay blinked out and back on every question — flicker
+   * for the viewer, perfectly static locally, because content protection does
+   * not affect the local display.
+   *
+   * Content protection is now set once from the user's stealth setting and
+   * never toggled. Self-exclusion is done by painting these rectangles black in
+   * the captured pixels; see capture.js § maskRegions.
+   */
+  selfWindowBounds() {
+    return [this.overlay, this.arrow]
+      .filter((w) => w && !w.isDestroyed() && w.isVisible())
+      .map((w) => w.getBounds());
   }
 
   // --- arrow --------------------------------------------------------------

@@ -20,11 +20,23 @@ const { app, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+/** Per-thread attachment cap. The thread is re-sent as context every turn. */
+const MAX_ATTACHMENTS_PER_THREAD = 5;
+
 const DEFAULT_SETTINGS = {
   capture: true,     // every question includes a screenshot
   pointing: true,    // draw the arrow
   stealth: true,     // hide from screen capture
   watching: true,    // auto-advance steps by looking at the screen
+  /**
+   * Look things up on the web when the screen does not hold the answer.
+   *
+   * OFF by default, and that is a privacy decision rather than a technical one.
+   * The README promises that screenshots and conversations stay on the machine;
+   * a web lookup sends the question to a search provider. Making it opt-in and
+   * per-question keeps that promise true until the user chooses otherwise.
+   */
+  web: false,
   /**
    * Accuracy at reading a screen is the whole product, so the default is the
    * cheapest ADEQUATE model, not the cheapest model.
@@ -321,6 +333,64 @@ class Store {
     this.threads.push(thread);
     this._persistThreads();
     return thread;
+  }
+
+  /**
+   * Files the user attached to a thread.
+   *
+   * Content stays in main and never crosses the bridge, for the same reason
+   * screenshots do not: the renderer has no use for the bytes and every extra
+   * copy is another place a document can leak from. The renderer gets a name, a
+   * size and an id — enough to draw a chip and to ask for it to be removed.
+   *
+   * Attachments live on the thread, not the turn, so a follow-up three messages
+   * later can still refer to the document that was attached at the start.
+   */
+  addAttachment(threadId, attachment) {
+    const thread = this.getThread(threadId);
+    if (!thread) return null;
+    if (!Array.isArray(thread.attachments)) thread.attachments = [];
+
+    // A cap, because the whole thread is re-sent as context on every turn and
+    // an unbounded pile of documents turns every question into an expensive one.
+    if (thread.attachments.length >= MAX_ATTACHMENTS_PER_THREAD) {
+      const err = /** @type {Error & { code?: string }} */ (
+        new Error(`A thread can hold ${MAX_ATTACHMENTS_PER_THREAD} attachments.`)
+      );
+      err.code = 'TOO_MANY_ATTACHMENTS';
+      throw err;
+    }
+
+    thread.attachments.push(attachment);
+    thread.updatedAt = Date.now();
+    this._persistThreads();
+    return attachment;
+  }
+
+  /** Metadata only — never the bytes. */
+  listAttachments(threadId) {
+    const thread = this.getThread(threadId);
+    if (!thread || !Array.isArray(thread.attachments)) return [];
+    return thread.attachments.map(({ id, name, size, mimeType, kind }) => ({
+      id, name, size, mimeType, kind,
+    }));
+  }
+
+  /** The bytes, for main's own use when building a request. */
+  attachmentsFor(threadId) {
+    const thread = this.getThread(threadId);
+    return (thread && Array.isArray(thread.attachments)) ? thread.attachments : [];
+  }
+
+  removeAttachment(threadId, attachmentId) {
+    const thread = this.getThread(threadId);
+    if (!thread || !Array.isArray(thread.attachments)) return false;
+    const before = thread.attachments.length;
+    thread.attachments = thread.attachments.filter((a) => a.id !== attachmentId);
+    if (thread.attachments.length === before) return false;
+    thread.updatedAt = Date.now();
+    this._persistThreads();
+    return true;
   }
 
   renameThread(id, title) {

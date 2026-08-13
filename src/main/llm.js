@@ -40,8 +40,15 @@ function parseJson(text) {
   return null;
 }
 
-function imagePart(buffer) {
-  return { inlineData: { mimeType: 'image/png', data: buffer.toString('base64') } };
+/**
+ * `mimeType` is a parameter, not a constant, because the answer pass now sends
+ * JPEG and the locate pass still sends PNG. Hardcoding 'image/png' here while
+ * handing over JPEG bytes is the kind of mislabel a provider may accept, reject
+ * or silently misdecode depending on the model — none of which is a thing to
+ * leave to chance.
+ */
+function imagePart(buffer, mimeType = 'image/png') {
+  return { inlineData: { mimeType, data: buffer.toString('base64') } };
 }
 
 /**
@@ -172,6 +179,9 @@ function targetFrom(parsed) {
  * @property {number} [maxOutputTokens]
  * @property {AbortSignal} [signal] threaded all the way to fetch, so Escape
  *   actually cancels the upstream call instead of only discarding its reply
+ * @property {boolean} [web] let the provider search the web for this request.
+ *   Answer pass only — locating a control and checking a step are questions
+ *   about the screenshot, not about the world.
  */
 
 class Llm {
@@ -212,13 +222,17 @@ class Llm {
    * @param {object[]} parts
    * @param {RequestOptions} [opts]
    */
-  _req(system, parts, { temperature = 0.2, maxOutputTokens = 1400, signal } = {}) {
+  _req(system, parts, { temperature = 0.2, maxOutputTokens = 1400, signal, web } = {}) {
     return {
       model: this.getModel(),
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts }],
       config: { temperature, maxOutputTokens },
       signal,
+      // Only the answer pass ever sets this. Locating a control and checking
+      // whether a step is done are both questions about the screenshot, and
+      // searching the web to answer them would be pure latency.
+      web,
     };
   }
 
@@ -232,9 +246,25 @@ class Llm {
    * a product requirement (PRODUCT.md); making it a separate request would not
    * make it more reliable.
    */
-  async respond({ prompt, screenshot, history, activeTask, signal }) {
+  async respond({ prompt, screenshot, screenshotMime, history, activeTask, signal, web, attachments }) {
     const parts = [];
-    if (screenshot) parts.push(imagePart(screenshot));
+    if (screenshot) parts.push(imagePart(screenshot, screenshotMime));
+
+    // Attachments come AFTER the screenshot and BEFORE the conversation, so the
+    // model reads them as reference material for the question rather than as
+    // part of what is on screen. Labelling each one by filename matters: asked
+    // "what does the error in the log mean", the model has to be able to say
+    // which file it is quoting.
+    for (const att of attachments || []) {
+      if (!att) continue;
+      if (att.kind === 'image' && att.data) {
+        parts.push({ text: `Attached image: ${att.name}` });
+        parts.push({ inlineData: { mimeType: att.mimeType || 'image/png', data: att.data } });
+      } else if (att.text) {
+        const note = att.truncated ? ' (truncated)' : '';
+        parts.push({ text: `Attached file ${att.name}${note}:\n\n${att.text}\n\n---\n` });
+      }
+    }
 
     const transcript = formatHistory(history);
     if (transcript) {
@@ -260,7 +290,7 @@ class Llm {
     parts.push({ text: prompt });
 
     const res = await this._client().models.generateContent(
-      this._req(PLAN_SYSTEM, parts, { temperature: 0.3, maxOutputTokens: 3000, signal })
+      this._req(PLAN_SYSTEM, parts, { temperature: 0.3, maxOutputTokens: 3000, signal, web })
     );
 
     const parsed = parseJson(res.text);
@@ -401,6 +431,9 @@ class Llm {
       model: this.getModel(),
       contents: [{ role: 'user', parts: [{ text: 'ok' }] }],
       config: { temperature: 0, maxOutputTokens: 1 },
+      systemInstruction: undefined,
+      signal: undefined,
+      web: false,
     });
     return true;
   }

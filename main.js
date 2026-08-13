@@ -100,7 +100,7 @@ function main() {
         if (win && !win.isDestroyed()) win.webContents.send('hr:turn', event);
       },
       point: (payload) => windows.showArrow(payload),
-      excludeFromCapture: () => windows.excludeFromCapture(),
+      selfWindowBounds: () => windows.selfWindowBounds(),
     });
 
     // The arrow's 45s dwell timer hides it without anyone asking. Tell the

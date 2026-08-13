@@ -90,6 +90,21 @@
               <circle cx="12" cy="12.5" r="3.2" stroke="currentColor" stroke-width="1.8"/>
             </svg>
           </button>
+          <button type="button" class="tool" id="toggle-web" aria-pressed="false"
+                  aria-label="Look things up on the web" title="Look things up on the web">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18"
+                    stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button type="button" class="tool" id="attach"
+                  aria-label="Attach a file to this thread" title="Attach a file">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l9-9a3.4 3.4 0 014.8 4.8l-8.9 8.9a1.8 1.8 0 01-2.5-2.5l8.2-8.2"
+                    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
           <button type="button" class="tool" id="toggle-threads" aria-pressed="false"
                   aria-label="Threads" title="Threads">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -110,6 +125,22 @@
           <button type="submit" class="kbd kbd--send" id="send"
                   aria-label="Send" title="Send">⏎</button>
         </div>
+
+        <!-- Re-open the conversation that was just collapsed.
+             Collapsing used to be an X: it hid the transcript and the only way
+             back was the Threads panel, two clicks away, to re-select a thread
+             that was never actually closed. This is the other half of that
+             toggle and it is hidden until there is something to come back to. -->
+        <button type="button" class="tool" id="expand-thread" hidden
+                aria-label="Show the conversation" title="Show the conversation">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Attachments carried by this thread, shown as removable chips. -->
+        <span class="attachments" id="attachments" hidden></span>
 
         <!-- Drag handle. Four columns rather than two: this is a target people
              have to hit while the window is floating over something else, and
@@ -162,10 +193,16 @@
               <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
             </svg>
           </button>
+          <!-- A chevron, not an X. An X reads as "close this and lose it", and
+               the old behaviour matched: the thread stayed open underneath but
+               getting back to it meant going through the Threads panel. Up
+               collapses to the bar, and the matching down chevron in the bar
+               brings this exact thread back in one click. -->
           <button type="button" class="icon-btn" id="panel-close"
-                  aria-label="Hide the conversation" title="Hide">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                  aria-label="Collapse the conversation" title="Collapse">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </header>

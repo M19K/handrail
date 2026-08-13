@@ -59,6 +59,12 @@ contextBridge.exposeInMainWorld('handrail', {
   reopenStep: (taskId, index) => call('hr:step:reopen', taskId, index),
 
   // --- threads ------------------------------------------------------------
+  attachments: {
+    add: (threadId) => call('hr:attach:add', threadId),
+    list: (threadId) => call('hr:attach:list', threadId),
+    remove: (threadId, id) => call('hr:attach:remove', threadId, id),
+  },
+
   threads: {
     list: () => call('hr:threads:list'),
     open: (id) => call('hr:threads:open', id),

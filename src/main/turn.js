@@ -36,7 +36,7 @@ class TurnController {
    * @param {() => Electron.BrowserWindow} deps.getOverlay
    * @param {(event: object) => void} deps.emit      send on the hr:turn stream
    * @param {(rect: object|null) => void} deps.point draw or clear the arrow
-   * @param {() => (() => void)} deps.excludeFromCapture keep our own windows out
+   * @param {() => object[]} deps.selfWindowBounds our own windows' bounds, masked out
    *   of the screenshot; returns a restore function
    */
   constructor(deps) {
@@ -52,7 +52,7 @@ class TurnController {
     this.getOverlay = deps.getOverlay;
     this.emit = deps.emit;
     this.point = deps.point;
-    this.excludeFromCapture = deps.excludeFromCapture;
+    this.selfWindowBounds = deps.selfWindowBounds;
 
     this.turnId = 0;
     this.active = null;   // { id, cancelled }
@@ -82,7 +82,7 @@ class TurnController {
    * anything else. Letting the renderer choose the id closes the window
    * entirely rather than making it small.
    */
-  async ask({ text, capture, turnId, threadId }) {
+  async ask({ text, capture, web, turnId, threadId }) {
     // Abort any in-flight request, but LEAVE THE TASK ALONE. This used to call
     // cancel(), which also stopped the watching loop and cleared the arrow — so
     // asking "now what?" in the middle of a task quietly abandoned it.
@@ -100,7 +100,7 @@ class TurnController {
     // Fire and forget: the renderer already has the turnId and everything
     // else arrives as events. Awaiting here would block the IPC reply on the
     // whole model round-trip.
-    this._run(turn, { text, capture }).catch((err) => {
+    this._run(turn, { text, capture, web }).catch((err) => {
       // An abort is not a failure to report — the user asked for it.
       if (turn.cancelled || (err && err.name === 'AbortError')) return;
       this.emit({ type: 'error', turnId: id, message: friendly(err), recoverable: true });
@@ -147,11 +147,16 @@ class TurnController {
     this.clearArrow();
   }
 
-  async _run(turn, { text, capture }) {
+  async _run(turn, { text, capture, web }) {
     const settings = this.store.getSettings();
     const useCapture = capture !== undefined ? capture : settings.capture;
+    // Same contract as `capture`: the renderer owns the per-turn value and the
+    // stored setting is only the fallback. See CLAUDE.md — main and the
+    // renderer disagreeing about this flag is a trap this project already hit.
+    const useWeb = web !== undefined ? web : settings.web;
 
     let shot = null;
+    let shotMime;
     let display = null;
 
     const t0 = Date.now();
@@ -161,10 +166,11 @@ class TurnController {
       const capStart = Date.now();
       display = displayForWindow(this.getOverlay());
       // Handrail is excluded from its own screenshot without anything moving
-      // on screen — see windows.js § excludeFromCapture.
-      const shotResult = await this._captureWithoutSelf(display, 'full');
+      // on screen — see capture.js § maskRegions.
+      const shotResult = await this._captureWithoutSelf(display, 'answer');
       if (turn.cancelled) return;
       shot = shotResult.buffer;
+      shotMime = shotResult.mimeType;
       tCapture = Date.now() - capStart;
       console.log(`[timing] capture ${tCapture}ms, ${Math.round(shot.length / 1024)}KB sent`);
       this.emit({ type: 'capture', turnId: turn.id });
@@ -184,6 +190,9 @@ class TurnController {
     const result = await this.llm.respond({
       prompt: text,
       screenshot: shot,
+      screenshotMime: shotMime,
+      web: useWeb,
+      attachments: this.store.attachmentsFor(this.threadId),
       history: thread ? thread.turns : [],
       // So a follow-up continues the checklist instead of duplicating it.
       activeTask: this.task,
@@ -224,7 +233,11 @@ class TurnController {
       if (result.target && shot && display && this.store.getSettings().pointing) {
         await this._pointAtTarget({
           display,
-          screenshot: shot,
+          // Deliberately NOT the answer frame. That is now 1600px JPEG, which
+          // is right for "what is on screen" and wrong for finding a 16px
+          // toolbar icon. Pointing re-captures at native resolution; it costs
+          // about 200ms on the turns that actually draw an arrow.
+          screenshot: null,
           target: result.target,
           instruction: firstSentence(result.markdown),
         });
@@ -602,19 +615,16 @@ class TurnController {
    * It used to hide the overlay and show it again, which worked and also made
    * the UI visibly vanish and reappear on every prompt, every arrow and every
    * completion check. Capture exclusion achieves the same thing with nothing
-   * moving on screen — see windows.js § excludeFromCapture.
+   * moving on screen — see capture.js § maskRegions.
    */
   async _captureWithoutSelf(display, quality) {
-    const restore = this.excludeFromCapture();
-    // A beat for the change in display affinity to take effect. Far shorter
-    // than the frame a hide/show needed, and invisible either way.
-    await new Promise((r) => setTimeout(r, 32));
-
-    try {
-      return await captureDisplay(display, quality);
-    } finally {
-      restore();
-    }
+    // No window property is touched and nothing waits for a compositor beat:
+    // Handrail's own rectangles are painted out of the captured pixels. The
+    // 32ms sleep that used to be here existed for the content-protection toggle
+    // to take effect, and that toggle is what made the overlay flicker for
+    // anyone watching a screen share.
+    const mask = this.selfWindowBounds ? this.selfWindowBounds() : [];
+    return captureDisplay(display, quality, mask);
   }
 
   /**
