@@ -8,9 +8,9 @@
 
 <br>
 
-<img src="docs/screenshots/pointing-at-a-control.png" width="900" alt="Handrail walking through SSH key setup over a Terminal window: a five-step checklist with step one ticked, and a mint arrow drawn on the Terminal command line, labelled &quot;Generate a new SSH key pair&quot;">
+<img src="docs/screenshots/a-thread.png" width="900" alt="Handrail answering &quot;my screen looks too blue at night, how do I fix that?&quot; over the macOS Displays panel, then answering the follow-up &quot;where is the night shift button?&quot; in the same thread">
 
-<sub>A real question, a real screen, a real arrow. Not a mockup — this is v0.1.9, the shipped build.</sub>
+<sub>A real question about the screen that is actually open, and a follow-up answered in the same thread. Not a mockup.</sub>
 
 </div>
 
@@ -43,12 +43,12 @@ diagnose why step 4 failed.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/guided-checklist.png" alt="A five-step checklist beside a Terminal window, with the first step not yet done"></td>
-<td width="50%"><img src="docs/screenshots/answer-in-place.png" alt="Handrail explaining that a typed command was a typo, and giving the corrected command to run"></td>
+<td width="50%"><img src="docs/screenshots/asking-a-question.png" alt="The Handrail bar floating over the macOS Displays panel with a question typed into it"></td>
+<td width="50%"><img src="docs/screenshots/answer-in-place.png" alt="Handrail's answer naming the Night Shift button that is visible in the Displays panel behind it"></td>
 </tr>
 <tr>
-<td><sub><b>A checklist, not a wall of text.</b> It appears only when the job genuinely takes several steps.</sub></td>
-<td><sub><b>It answers about what went wrong.</b> Here it reads the error in the terminal and gives the corrected command.</sub></td>
+<td><sub><b>Ask without leaving the app.</b> The bar floats over whatever you are already doing.</sub></td>
+<td><sub><b>The answer is about your screen.</b> It names the control that is actually in front of you.</sub></td>
 </tr>
 <tr>
 <td colspan="2"><img src="docs/screenshots/settings.png" width="460" alt="Handrail's settings: capture my screen, point at things on screen, hide from screen sharing, look things up on the web, and the model picker"></td>
