@@ -8,9 +8,9 @@
 
 <br>
 
-<img src="docs/screenshots/pointing.png" width="900" alt="Handrail answering &quot;where do I change my screen resolution?&quot; over Windows Settings, with a mint arrow drawn on the actual Display resolution dropdown">
+<img src="docs/screenshots/pointing-at-a-control.png" width="900" alt="Handrail walking through SSH key setup over a Terminal window: a five-step checklist with step one ticked, and a mint arrow drawn on the Terminal command line, labelled &quot;Generate a new SSH key pair&quot;">
 
-<sub>A real question, a real screen, a real arrow. Not a mockup — this is the shipped build.</sub>
+<sub>A real question, a real screen, a real arrow. Not a mockup — this is v0.1.9, the shipped build.</sub>
 
 </div>
 
@@ -38,6 +38,25 @@ diagnose why step 4 failed.
 5. A second pass sends the same screenshot back and asks only *where* that control is, as coordinates.
 6. Handrail draws an arrow at that spot on your real screen, in a transparent window that ignores your clicks.
 7. For a checklist, it keeps watching: every few seconds it re-checks the screen and ticks off each step as you finish it, so you never mark anything done yourself.
+
+### What it looks like
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/guided-checklist.png" alt="A five-step checklist beside a Terminal window, with the first step not yet done"></td>
+<td width="50%"><img src="docs/screenshots/answer-in-place.png" alt="Handrail explaining that a typed command was a typo, and giving the corrected command to run"></td>
+</tr>
+<tr>
+<td><sub><b>A checklist, not a wall of text.</b> It appears only when the job genuinely takes several steps.</sub></td>
+<td><sub><b>It answers about what went wrong.</b> Here it reads the error in the terminal and gives the corrected command.</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/settings.png" width="460" alt="Handrail's settings: capture my screen, point at things on screen, hide from screen sharing, look things up on the web, and the model picker"></td>
+</tr>
+<tr>
+<td colspan="2"><sub><b>Five switches and a model picker.</b> Web search is off by default; only models that can read a screen are listed.</sub></td>
+</tr>
+</table>
 
 ## Architecture
 
