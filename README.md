@@ -99,7 +99,7 @@ layer. The renderer receives a masked hint of the key and nothing else.
 - **Both builds are unsigned.** macOS refuses the first launch until you use **Open Anyway**; Windows SmartScreen warns. Signing costs $99/year per platform and is not in place.
 - **On macOS, every update costs you your key and your screen permission.** macOS ties both to the app's signature, and an unsigned build's signature changes on every build. This ends when the app is signed, not before.
 - **Web search is off by default.** Everything else stays on your machine; turning the globe on sends your question to a search provider.
-- **A reply takes about 4–10 seconds** (measured 2026-08-12, single 1x display). Roughly 200ms of that is the screenshot; the rest is the model.
+- **A reply takes 4–10 seconds on the default settings, and 12–25 seconds with web search on** — measured 2026-08-12 and 2026-08-21 respectively, on one 1x display. Five observations on the default (`gemini-3.5-flash`, no web), three with web search enabled on a different model. Roughly 200ms of either figure is the screenshot; the rest is the provider. These are single observations, not a distribution.
 
 ## Getting started
 
