@@ -24,12 +24,16 @@
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 
 /**
- * Gemini model ids -> OpenRouter model ids.
- * Anything not listed passes through unchanged, so you can put a raw
- * OpenRouter id (e.g. "anthropic/claude-sonnet-4.5") in config and it works.
+ * Bare Gemini names -> OpenRouter ids, kept only for settings written before
+ * the model became a fully-qualified id.
+ *
+ * `gemini-3.5-flash` is deliberately NOT in here. It used to map to
+ * `google/gemini-2.5-flash`, which is a different and older model — so a
+ * settings file naming 3.5 silently got 2.5, with no error and nothing in the
+ * log. The default in `store.js` is fully qualified and never hit this, but a
+ * hand-edited setting or an env override did.
  */
 const MODEL_MAP = {
-  'gemini-3.5-flash': 'google/gemini-2.5-flash',
   'gemini-2.5-flash': 'google/gemini-2.5-flash',
   'gemini-2.5-pro': 'google/gemini-2.5-pro',
   'gemini-2.0-flash': 'google/gemini-2.0-flash-001',
@@ -37,12 +41,51 @@ const MODEL_MAP = {
   'gemini-1.5-pro': 'google/gemini-pro-1.5',
 };
 
+/** What an unrecognised or absent model falls back to. Stated once. */
+const DEFAULT_MODEL = 'google/gemini-3.5-flash';
+
+/**
+ * Resolve the model id to send.
+ *
+ * NEVER SILENTLY SUBSTITUTES. Every path that does not return the caller's own
+ * id says so on the way past. The previous version answered
+ * `google/gemini-2.5-flash` for a bare name, an unknown name, an empty string
+ * and an env override alike — four different situations, one silent answer, and
+ * the user's model picker still showing what they chose.
+ *
+ * This is the same failure shape as the locate token cap: a value quietly
+ * replaced by a plausible one, invisible until someone measures the result.
+ */
 function mapModel(name) {
-  if (process.env.OPENROUTER_MODEL) return process.env.OPENROUTER_MODEL;
-  if (!name) return 'google/gemini-2.5-flash';
-  if (MODEL_MAP[name]) return MODEL_MAP[name];
-  if (name.includes('/')) return name; // already an OpenRouter id
-  return 'google/gemini-2.5-flash';
+  if (process.env.OPENROUTER_MODEL) {
+    if (name && name !== process.env.OPENROUTER_MODEL) {
+      console.warn(
+        `[openrouter] OPENROUTER_MODEL is overriding the selected model: `
+        + `${JSON.stringify(name)} -> ${JSON.stringify(process.env.OPENROUTER_MODEL)}`,
+      );
+    }
+    return process.env.OPENROUTER_MODEL;
+  }
+
+  if (!name) {
+    console.warn(`[openrouter] no model set; falling back to ${DEFAULT_MODEL}`);
+    return DEFAULT_MODEL;
+  }
+
+  if (MODEL_MAP[name]) {
+    console.warn(`[openrouter] legacy model name ${JSON.stringify(name)} -> ${MODEL_MAP[name]}`);
+    return MODEL_MAP[name];
+  }
+
+  // Already a provider-qualified id. The overwhelmingly common case, and the
+  // only one that passes through untouched.
+  if (name.includes('/')) return name;
+
+  console.warn(
+    `[openrouter] unrecognised model ${JSON.stringify(name)}; falling back to `
+    + `${DEFAULT_MODEL}. A model id needs a provider prefix, e.g. "google/…".`,
+  );
+  return DEFAULT_MODEL;
 }
 
 /** Gemini `parts[]` -> OpenAI message content (string, or array for vision). */
@@ -360,4 +403,5 @@ class OpenRouterClient {
  * Corrected in 0.1.5.
  */
 module.exports = {
+  mapModel,
   retryDelayMs, OpenRouterClient };
