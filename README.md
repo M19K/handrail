@@ -203,3 +203,9 @@ Project documents: [PRODUCT.md](PRODUCT.md) for what Handrail is and how it
 behaves, [DECISIONS.md](DECISIONS.md) for every decision and why,
 [CONTEXT.md](CONTEXT.md) for current state, [PLATFORM.md](PLATFORM.md) for
 Windows/macOS parity.
+
+## Author
+
+Built by **Maaz Kazi** — product and systems, San Francisco.
+
+[maazkazi.com](https://maazkazi.com) · [github.com/M19K](https://github.com/M19K) · [linkedin.com/in/maazkazi26](https://www.linkedin.com/in/maazkazi26/)
